@@ -23,7 +23,8 @@ action_job_parser = job_parser.add_subparsers(dest="action")
 
 list_job_parser = action_job_parser.add_parser("list")
 list_job_parser.add_argument("uid", type=int, nargs='?', help='uid of the job to inspect', default=None)
-list_job_parser.add_argument("--site", type=str, nargs='*', help='list of sites for job search')
+list_job_parser.add_argument("--site", type=str, nargs='*', help='list of sites for job search',
+                             default=[settings_default_site])
 list_job_parser.add_argument("--filter", type=str, nargs='*', help='list of filters to job seach, e.g. status=running',
                              default=[])
 
@@ -34,7 +35,8 @@ add_job_parser.add_argument("--walltime", type=str, help='wall time for the job'
 
 del_job_parser = action_job_parser.add_parser("del")
 del_job_parser.add_argument("uid", type=str, help='uid of the job to delete')
-del_job_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is', default=None)
+del_job_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
+                            default=settings_default_site)
 
 dep_parser = subparsers.add_parser("dep")
 
@@ -45,7 +47,8 @@ add_dep_parser.add_argument("uid", type=str, help='uid of the job on which to do
 add_dep_parser.add_argument("nodes", type=str, nargs='*',
                             help='names of the nodes on which to perform the deployement. all nodes from the job are deployed if ommited',
                             default=None)
-add_dep_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is', default=None)
+add_dep_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
+                            default=settings_default_site)
 add_dep_parser.add_argument("--environment", type=str, help='name of the environment to install',
                             default="debian9-x64-base")
 
@@ -84,10 +87,10 @@ def print_site_item(items_name, uid, site, filter):
             if opts.site is None or site in opts.site:
                 item = g5k(s)("stable")("sites")(site)(items_name).get_items_filtered(data=not opts.quiet, **kwargs)
                 if len(item) > 0:
-                    print_items(item,opts.format)
+                    print_items(item, opts.format)
     else:
 
-        print_items([g5k(s)(find_sub_item(items_name, uid, site)).get_raw()],opts.format)
+        print_items([g5k(s)(find_sub_item(items_name, uid, site)).get_raw()], opts.format)
         exit(0)
 
 
