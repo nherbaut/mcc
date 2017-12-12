@@ -5,6 +5,15 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
+class ApiError(Exception):
+    def __init__(self, return_code, return_text):
+        self.return_code = return_code
+        self.return_text = return_text
+
+    def __str__(self):
+        return "%d: %s" % (self.return_code, self.return_text)
+
+
 def g5kparser(session, data, *args):
     if len(args) == 0:
         return data
@@ -81,20 +90,20 @@ class Kolector:
         r = self.session.get("/".join(self.path_elements))
         if r.status_code < 299:
             return g5kparser(self.session, r.json(), *args)
-        raise KeyError
+        raise ApiError(r.status_code, r.text)
 
     def get_items(self):
         r = self.session.get("/".join(self.path_elements))
         if r.status_code < 299:
             return [item["uid"] for item in g5kparser(self.session, r.json(), "items")]
-        raise KeyError
+        raise ApiError(r.status_code, r.text)
 
     def get_links(self):
         r = self.session.get("/".join(self.path_elements))
         if r.status_code < 299:
             logging.debug(r.json())
             return [item["rel"] for item in g5kparser(self.session, r.json(), "links")]
-        raise KeyError
+        raise ApiError(r.status_code, r.text)
 
     def url(self):
         return "/".join(self.path_elements)
@@ -106,7 +115,7 @@ class Kolector:
                               json={"resources": resources_values, "command": command, "types": types})
         if not r.status_code == 201:
             logging.error(r.text)
-            raise KeyError
+            raise ApiError(r.status_code, r.text)
 
         return r.json()["uid"]
 
@@ -123,7 +132,7 @@ class Kolector:
         if not r.status_code == 201:
             logging.error(r.status_code)
             logging.error(r.text)
-            raise KeyError
+            raise ApiError(r.status_code, r.text)
 
         return r.headers['Location'].split("/")[-1]
 
@@ -132,8 +141,12 @@ class Kolector:
         if not r.status_code == 202:
             logging.error(r.status_code)
             logging.error(r.text)
-            raise KeyError
+            raise ApiError(r.status_code, r.text)
         return None
+
+    def delete_job(self, uid):
+        self.path_elements.append("job", str(uid))
+        return self.delete()
 
 
 def g5k(s):
