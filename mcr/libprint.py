@@ -1,6 +1,6 @@
 import sys
 import yaml
-import jinja2
+import time
 from jinja2 import Template
 
 
@@ -19,5 +19,7 @@ def print_items(items, print_template):
     else:
 
         template = Template(print_template)
+        now = int(time.time())
         for item in items:
+            item["now"] = now
             print(template.render(**item))
