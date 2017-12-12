@@ -2,7 +2,7 @@ import sys
 import yaml
 
 
-def print_jobs(jobs):
+def print_items(jobs):
     if len(jobs) == 0:
         return
 
