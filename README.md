@@ -51,7 +51,6 @@ optional arguments:
 # job command
 
 ```
-(.venv) nherbaut@nherbaut-laptop:~/workspace/mcr$ ./mcc job --help
 usage: mcc job [-h] {list,add,del} ...
 
 positional arguments:
@@ -64,7 +63,6 @@ optional arguments:
 ## job list command
 
 ```
-(.venv) nherbaut@nherbaut-laptop:~/workspace/mcr$ ./mcc job list --help
 usage: mcc job list [-h] [--site [SITE [SITE ...]]]
                     [--filter [FILTER [FILTER ...]]]
                     [uid]
@@ -84,7 +82,6 @@ optional arguments:
 ## job add command
 
 ```
-(.venv) nherbaut@nherbaut-laptop:~/workspace/mcr$ ./mcc job add --help
 usage: mcc job add [-h] [--walltime WALLTIME] site node_count
 
 positional arguments:
@@ -100,7 +97,6 @@ optional arguments:
 ## job del command
 
 ```
-(.venv) nherbaut@nherbaut-laptop:~/workspace/mcr$ ./mcc job del --help
 usage: mcc job del [-h] [--site [SITE]] uid
 
 positional arguments:
@@ -114,7 +110,6 @@ optional arguments:
 # deployment command
 
 ```
-(.venv) nherbaut@nherbaut-laptop:~/workspace/mcr$ ./mcc dep --help
 usage: mcc dep [-h] {add,list} ...
 
 positional arguments:
@@ -127,7 +122,6 @@ optional arguments:
 ## deployment list command
 
 ```
-(.venv) nherbaut@nherbaut-laptop:~/workspace/mcr$ ./mcc dep list --help
 usage: mcc dep list [-h] [--site [SITE [SITE ...]]]
                     [--filter [FILTER [FILTER ...]]]
                     [uid]
