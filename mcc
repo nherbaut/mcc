@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+
+import logging
+from mcr.libmcr import g5k
+import sys
+import time
+from mcr.libsettings import *
+from mcr.libsession import session as s
+from mcr.libprint import print_items
+import argparse
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+arger = argparse.ArgumentParser()
+subparsers = arger.add_subparsers(dest="command")
+arger.add_argument("-q", help="quiet mode, just display the uids", action="store_true", dest="quiet")
+arger.add_argument("--dry-run", help="just print the http requests", action="store_true", dest="dry")
+
+job_parser = subparsers.add_parser("job")
+
+action_job_parser = job_parser.add_subparsers(dest="action")
+
+list_job_parser = action_job_parser.add_parser("list")
+list_job_parser.add_argument("uid", type=str, nargs='?', help='uid of the job to inspect', default=None)
+list_job_parser.add_argument("--site", type=str, nargs='*', help='list of sites for job search')
+list_job_parser.add_argument("--filter", type=str, nargs='*', help='list of filters to job seach, e.g. status=running',
+                             default=[])
+
+add_job_parser = action_job_parser.add_parser("add")
+add_job_parser.add_argument("site", type=str, help='site where to deploy the job')
+add_job_parser.add_argument("node_count", type=int, help='how many node to book')
+add_job_parser.add_argument("--walltime", type=str, help='wall time for the job', default="00:30")
+
+del_job_parser = action_job_parser.add_parser("del")
+del_job_parser.add_argument("uid", type=str, help='uid of the job to delete')
+del_job_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is', default=None)
+
+dep_parser = subparsers.add_parser("dep")
+
+action_dep_parser = dep_parser.add_subparsers(dest="action")
+
+add_dep_parser = action_dep_parser.add_parser("add")
+add_dep_parser.add_argument("uid", type=str, help='uid of the job on which to do the deployment')
+add_dep_parser.add_argument("nodes", type=str, nargs='*',
+                            help='names of the nodes on which to perform the deployement. all nodes from the job are deployed if ommited',
+                            default=None)
+add_dep_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is', default=None)
+add_dep_parser.add_argument("--environment", type=str, help='name of the environment to install',
+                            default="debian9-x64-base")
+
+list_dep_parser = action_dep_parser.add_parser("list")
+list_dep_parser.add_argument("uid", type=str, nargs='?', help='uid of the dep to inspect', default=None)
+list_dep_parser.add_argument("--site", type=str, nargs='*', help='list of sites for dep search')
+list_dep_parser.add_argument("--filter", type=str, nargs='*', help='list of filters to dep seach, e.g. status=running',
+                             default=[])
+
+# Parse
+opts = arger.parse_args()
+
+
+def get_link_href(entity, rel="self"):
+    for item in entity["links"]:
+        if item["rel"] == rel:
+            return item["href"]
+    return None
+
+
+def find_job(job, sites_hints):
+    return find_sub_item("jobs", job, sites_hints)
+
+
+def find_dep(dep, sites_hints):
+    return find_sub_item("deployments", dep, sites_hints)
+
+
+def print_site_item(items_name, uid, site, filter):
+    kwargs = {splat[0]: splat[1] for splat in (item.split("=") for item in filter)}
+    kwargs["user_uid"] = settings_login
+
+    if opts.uid is None:
+        for site in g5k(s)("stable")("sites").get_items():
+            if opts.site is None or site in opts.site:
+                item = g5k(s)("stable")("sites")(site)(items_name).get_items_filtered(data=not opts.quiet, **kwargs)
+                if len(item) > 0:
+                    print_items(item)
+    else:
+
+        print_items([g5k(s)(find_sub_item(items_name, uid, site)).get_raw()])
+        exit(0)
+
+
+def find_sub_item(item, uid, sites_hints):
+    '''
+
+    :param job: job uid
+    :param sites_hints: list of possible sites to look for. If list is empty of None, all g5k sites are inspected
+    :return: the url of the job
+    '''
+
+    if sites_hints is None or len(sites_hints) == 0:
+        target_sites = g5k(s)("stable")("sites").get_items()
+    else:
+        target_sites = sites_hints
+
+    for site in target_sites:
+        items_for_site = g5k(s)("stable")("sites")(site)(item).get_items_filtered(data=True, user_uid=settings_login,
+                                                                                  uid=uid)
+        if len(items_for_site) == 1:
+            return get_link_href(items_for_site[0], rel="self")
+
+    raise KeyError
+
+
+try:
+
+    if opts.command == "job":
+
+        if opts.action == "list":
+
+            print_site_item("jobs", opts.uid, opts.site, opts.filter)
+
+
+
+        elif opts.action == "add":
+            job_uid = g5k(s)("stable")("sites")(opts.site).post_job(node_count=opts.node_count,
+                                                                    walltime=opts.walltime)
+            print(job_uid)
+            pass
+
+        elif opts.action == "del":
+
+            job = find_job(opts.uid, None if opts.site is None else [opts.site])
+            job_href = get_link_href(job, "self")
+            g5k(s)(job_href).delete()
+            print("Job %s has been deleted " % job_href)
+
+            exit(0)
+
+            # raise Exception("failed to delete job. Job missing or unauthorized")
+
+    if opts.command == "dep":
+        if opts.action == "add":
+            job = g5k(s)(find_job(opts.uid, None if opts.site is None else [opts.site])).get_raw()
+
+            if len(opts.nodes) == 0:
+                node_list = job["assigned_nodes"]
+            else:
+                node_list = list(set(job["assigned_nodes"]) & set(opts.nodes))
+
+            dep_uid = g5k(s)(get_link_href(job, "parent"))("deployments").post_provision(node_list=node_list,
+                                                                                         key=settings_ssh_key,
+                                                                                         environment=opts.environment)
+            print("deployments created: %s" % dep_uid)
+            exit(0)
+
+        if opts.action == "list":
+            print_site_item("deployments", opts.uid, opts.site, opts.filter)
+            exit(0)
+
+
+
+
+except KeyboardInterrupt:
+    pass
