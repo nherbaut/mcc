@@ -1,6 +1,7 @@
 import requests
 import logging
 import sys
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 
@@ -101,7 +102,7 @@ class Kolector:
     def post_job(self, node_count=10, walltime="2:00", types=["deploy"], command="sleep 7200"):
         # '{"resources": "nodes=2,walltime=02:00", "command": "sleep 7200", "types": ["deploy"]}'
         resources_values = "nodes=%d,walltime=%s" % (node_count, walltime)
-        r = self.session.post("/".join(self.path_elements),
+        r = self.session.post("/".join(self.path_elements + ["jobs"]),
                               json={"resources": resources_values, "command": command, "types": types})
         if not r.status_code == 201:
             logging.error(r.text)
@@ -120,6 +121,7 @@ class Kolector:
         r = self.session.post("/".join(self.path_elements), json=data)
 
         if not r.status_code == 201:
+            logging.error(r.status_code)
             logging.error(r.text)
             raise KeyError
 
@@ -128,6 +130,7 @@ class Kolector:
     def delete(self):
         r = self.session.delete("/".join(self.path_elements))
         if not r.status_code == 202:
+            logging.error(r.status_code)
             logging.error(r.text)
             raise KeyError
         return None
