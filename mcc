@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
-from mcr.libmcr import g5k
+from mcr.libmcr import g5k, ApiError
 import sys
 import time
 from mcr.libsettings import *
@@ -65,9 +65,10 @@ opts = arger.parse_args()
 
 def get_link_href(entity, rel="self"):
     for item in entity["links"]:
+
         if item["rel"] == rel:
             return item["href"]
-    return None
+    return ""
 
 
 def find_job(job, sites_hints):
@@ -108,10 +109,14 @@ def find_sub_item(item, uid, sites_hints):
         target_sites = sites_hints
 
     for site in target_sites:
-        items_for_site = g5k(s)("stable")("sites")(site)(item).get_items_filtered(data=True, user_uid=settings_login,
-                                                                                  uid=uid)
-        if len(items_for_site) == 1:
-            return get_link_href(items_for_site[0], rel="self")
+        try:
+            items_for_site = g5k(s)("stable")("sites")(site)(item)(uid).get_raw()
+            return get_link_href(items_for_site, rel="self")
+        except ApiError as e:
+            if e.return_code == 404:
+                continue
+            else:
+                raise e
 
     return ""
 
@@ -132,14 +137,10 @@ try:
 
         elif opts.action == "del":
 
-            job = find_job(opts.uid, None if opts.site is None else [opts.site])
-            job_href = get_link_href(job, "self")
+            job_href = find_job(opts.uid, None if opts.site is None else [opts.site])
             g5k(s)(job_href).delete()
-            print("Job %s has been deleted " % job_href)
-
+            logging.info("Job %s has been deleted " % job_href)
             exit(0)
-
-            # raise Exception("failed to delete job. Job missing or unauthorized")
 
     if opts.command == "dep":
         if opts.action == "add":
@@ -153,7 +154,7 @@ try:
             dep_uid = g5k(s)(get_link_href(job, "parent"))("deployments").post_provision(node_list=node_list,
                                                                                          key=settings_ssh_key,
                                                                                          environment=opts.environment)
-            print("deployments created: %s" % dep_uid)
+            print(dep_uid)
             exit(0)
 
         if opts.action == "list":
