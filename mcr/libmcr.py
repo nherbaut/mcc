@@ -52,6 +52,23 @@ def g5kparser(session, data, *args):
     raise NameError
 
 
+def is_dict_matching(d1, dfilter):
+    '''
+
+    :param d1: the dict which values will be tested
+    :param dfilter: the dict which specifies the values to test. {"a":"b","c!":"d"} <=> d1["a"]=="b" and d2["a"]!="d"
+    :return: True i
+    '''
+    for k, v in dfilter.items():
+        if k[-1] == '!':
+            if d1.get(k[:-1], None) == dfilter[k]:
+                return False
+        else:
+            if d1.get(k, None) != dfilter[k]:
+                return False
+    return True
+
+
 class Kolector:
     def __init__(self, session, *args):
         self.session = session
@@ -77,8 +94,8 @@ class Kolector:
         if r.status_code < 299:
             json_data = r.json()
             for item in g5kparser(self.session, json_data, "items"):
-                if {ka: va for ka, va in item.items() for kb, vb in item.items() if
-                    ka in kwargs and kwargs[ka] == vb} == kwargs:
+
+                if is_dict_matching(item, kwargs):
                     if include_data:
                         res.append(item)
                     else:

@@ -14,6 +14,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 arger = argparse.ArgumentParser()
 subparsers = arger.add_subparsers(dest="command")
 arger.add_argument("-q", help="quiet mode, just display the uids", action="store_true", dest="quiet")
+arger.add_argument("--format", help="output formatting template, jinja", default=None)
 arger.add_argument("--dry-run", help="just print the http requests", action="store_true", dest="dry")
 
 job_parser = subparsers.add_parser("job")
@@ -21,7 +22,7 @@ job_parser = subparsers.add_parser("job")
 action_job_parser = job_parser.add_subparsers(dest="action")
 
 list_job_parser = action_job_parser.add_parser("list")
-list_job_parser.add_argument("uid", type=str, nargs='?', help='uid of the job to inspect', default=None)
+list_job_parser.add_argument("uid", type=int, nargs='?', help='uid of the job to inspect', default=None)
 list_job_parser.add_argument("--site", type=str, nargs='*', help='list of sites for job search')
 list_job_parser.add_argument("--filter", type=str, nargs='*', help='list of filters to job seach, e.g. status=running',
                              default=[])
@@ -51,7 +52,8 @@ add_dep_parser.add_argument("--environment", type=str, help='name of the environ
 list_dep_parser = action_dep_parser.add_parser("list")
 list_dep_parser.add_argument("uid", type=str, nargs='?', help='uid of the dep to inspect', default=None)
 list_dep_parser.add_argument("--site", type=str, nargs='*', help='list of sites for dep search')
-list_dep_parser.add_argument("--filter", type=str, nargs='*', help='list of filters to dep seach, e.g. status=running',
+list_dep_parser.add_argument("--filter", type=str, nargs='*',
+                             help='list of filters to dep seach, e.g. state=running state!=error',
                              default=[])
 
 # Parse
@@ -66,7 +68,7 @@ def get_link_href(entity, rel="self"):
 
 
 def find_job(job, sites_hints):
-    return find_sub_item("jobs", job, sites_hints)
+    return find_sub_item("jobs", int(job), sites_hints)
 
 
 def find_dep(dep, sites_hints):
@@ -82,10 +84,10 @@ def print_site_item(items_name, uid, site, filter):
             if opts.site is None or site in opts.site:
                 item = g5k(s)("stable")("sites")(site)(items_name).get_items_filtered(data=not opts.quiet, **kwargs)
                 if len(item) > 0:
-                    print_items(item)
+                    print_items(item,opts.format)
     else:
 
-        print_items([g5k(s)(find_sub_item(items_name, uid, site)).get_raw()])
+        print_items([g5k(s)(find_sub_item(items_name, uid, site)).get_raw()],opts.format)
         exit(0)
 
 
@@ -108,7 +110,7 @@ def find_sub_item(item, uid, sites_hints):
         if len(items_for_site) == 1:
             return get_link_href(items_for_site[0], rel="self")
 
-    raise KeyError
+    return ""
 
 
 try:
@@ -118,8 +120,6 @@ try:
         if opts.action == "list":
 
             print_site_item("jobs", opts.uid, opts.site, opts.filter)
-
-
 
         elif opts.action == "add":
             job_uid = g5k(s)("stable")("sites")(opts.site).post_job(node_count=opts.node_count,
