@@ -9,7 +9,7 @@ Users should be able to perform the following tasks in one line:
 
 # usage
 
-```
+```bash
 
 export SITE=nancy
 export NIC="eth0"
