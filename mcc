@@ -48,7 +48,9 @@ list_job_parser.add_argument("--filter", type=str, nargs='*', help='list of filt
 add_job_parser = action_job_parser.add_parser("add")
 add_job_parser.add_argument("site", type=str, help='site where to deploy the job')
 add_job_parser.add_argument("node_count", type=int, help='how many node to book')
-add_job_parser.add_argument("--walltime", type=str, help='wall time for the job', default="00:30")
+add_job_parser.add_argument("duration_adv", type=str, help='how many node to book', choices=["until", 'for'],
+                            default="for")
+add_job_parser.add_argument("duration", type=str, help='duration or expiration date for the job', default="1h")
 
 del_job_parser = action_job_parser.add_parser("del")
 del_job_parser.add_argument("uid", type=str, help='uid of the job to delete')
@@ -158,6 +160,18 @@ def find_sub_item(item, uid, sites_hints):
     return ""
 
 
+def get_wall_time(duraction_adv, duration):
+    import datetime
+    import dateutil.parser
+    if duraction_adv == "for":
+        dt = (dateutil.parser.parse(duration) - dateutil.parser.parse("0h"))
+
+    elif duraction_adv == "until":
+        dt = (dateutil.parser.parse(duration) - datetime.datetime.now())
+
+    return "%02d:%02d" % ((dt.seconds // 3600), (dt.seconds // 60) % 60)
+
+
 try:
 
     if opts.command == "job":
@@ -167,8 +181,11 @@ try:
             print_site_item("jobs", opts.uid, opts.sites, opts.filter)
 
         elif opts.action == "add":
+            wt = get_wall_time(opts.duration_adv, opts.duration)
+            print(wt)
+            exit(0)
             job_uid = g5k(s)("stable")("sites")(opts.site).post_job(node_count=opts.node_count,
-                                                                    walltime=opts.walltime)
+                                                                    walltime=wt)
             print(job_uid)
             pass
 
