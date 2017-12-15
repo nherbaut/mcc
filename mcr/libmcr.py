@@ -127,11 +127,15 @@ class Kolector:
     def url(self):
         return "/".join(self.path_elements)
 
-    def post_job(self, node_count=10, walltime="2:00", types=["deploy"], command="sleep 7200"):
-        # '{"resources": "nodes=2,walltime=02:00", "command": "sleep 7200", "types": ["deploy"]}'
-        resources_values = "nodes=%d,walltime=%s" % (node_count, walltime)
-        r = self.session.post("/".join(self.path_elements + ["jobs"]),
-                              json={"resources": resources_values, "command": command, "types": types})
+    def post_job(self, resources={"node_count": "10", "walltime": "2:00"}, properties={}, types=["deploy"],
+                 command="sleep 7200"):
+
+        data = {}
+        data["resources"] = ",".join(["%s=%s" % item for item in resources])
+        data["properties"] = ",".join(["%s=%s" % item for item in properties])
+        data["types"] = types
+        data["command"] = command
+        r = self.session.post("/".join(self.path_elements + ["jobs"]), json=data)
         if not r.status_code == 201:
             logging.error(r.text)
             raise ApiError(r.status_code, r.text)

@@ -104,6 +104,17 @@ if opts.__contains__("sites") and opts.sites is None:
 s = mcr.libsession.create_session(settings_api_url, settings_login, settings_pwd)
 
 
+def get_sites():
+    return g5k(s)("stable/sites").get_items()
+
+
+def find_site_for_cluster(cluster):
+    for site in g5k(s)("stable/sites").get_items():
+        if cluster in g5k(s)("stable/sites")(site)("clusters").get_items():
+            return site
+    raise ApiError(404, "Cluster not found")
+
+
 def get_link_href(entity, rel="self"):
     for item in entity["links"]:
 
@@ -182,12 +193,20 @@ try:
 
         elif opts.action == "add":
             wt = get_wall_time(opts.duration_adv, opts.duration)
-            print(wt)
-            exit(0)
-            job_uid = g5k(s)("stable")("sites")(opts.site).post_job(node_count=opts.node_count,
-                                                                    walltime=wt)
+            properties = []
+            resources = []
+            resources.append(("nodes", opts.node_count))
+            resources.append(("walltime", wt))
+
+            if opts.site in get_sites():
+                site = opts.site
+            else:
+                properties.append(("cluster", "'%s'" % opts.site))
+                site = find_site_for_cluster(opts.site)
+
+            job_uid = g5k(s)("stable")("sites")(site).post_job(resources=resources, properties=properties)
             print(job_uid)
-            pass
+            exit(0)
 
         elif opts.action == "del":
 
