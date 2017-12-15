@@ -11,7 +11,6 @@ import datetime
 import dateutil.parser
 import argcomplete, argparse
 
-
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
 
@@ -40,6 +39,7 @@ job_parser = subparsers.add_parser("job")
 
 action_job_parser = job_parser.add_subparsers(dest="action")
 
+
 list_job_parser = action_job_parser.add_parser("list")
 list_job_parser.add_argument("uid", type=int, nargs='?', help='uid of the job to inspect', default=None)
 list_job_parser.add_argument("--sites", type=str, nargs='*', help='list of sites for job search',
@@ -49,6 +49,8 @@ list_job_parser.add_argument("--filter", type=str, nargs='*', help='list of filt
 
 hosts_list_job_parser = action_job_parser.add_parser("hosts-list")
 hosts_list_job_parser.add_argument("uid", type=int, nargs='?', help='uid of the job for which to show the hosts',
+                                   default=None)
+hosts_list_job_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
                                    default=None)
 
 add_job_parser = action_job_parser.add_parser("add")
@@ -63,12 +65,21 @@ wait_job_parser.add_argument("uid", type=str, help='uid of the job')
 wait_job_parser.add_argument("--filter", type=str, help='wait until the condition is true e.g. state=running',
                              default="state=running")
 wait_job_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
-                            default=None)
+                             default=None)
 
 del_job_parser = action_job_parser.add_parser("del")
 del_job_parser.add_argument("uid", type=str, help='uid of the job to delete')
 del_job_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
                             default=None)
+
+install_job_parser = action_job_parser.add_parser("install")
+install_job_parser.add_argument("uid", type=str, help='uid of the job to install to')
+install_job_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
+                                default=None)
+
+app_install_job_parser = install_job_parser.add_subparsers(dest="application")
+salt_app_install_job_parser = app_install_job_parser.add_parser("salt")
+
 
 dep_parser = subparsers.add_parser("dep")
 
@@ -97,7 +108,7 @@ list_dep_parser.add_argument("--filter", type=str, nargs='*',
                              help='wait until the condition is true eg. status=terminate',
                              default="status=terminated")
 list_dep_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
-                            default=None)
+                             default=None)
 
 # Parse
 argcomplete.autocomplete(parser)
@@ -236,15 +247,16 @@ try:
             exit(0)
 
         elif opts.action == "wait":
-            job_href = find_job(opts.uid,[opts.site])
+            job_href = find_job(opts.uid, [opts.site])
             k, v = opts.filter.split("=")
 
-            job=g5k(s)(job_href).get_raw()
+            job = g5k(s)(job_href).get_raw()
             while job[k] != v:
-                print(job_href,job[k])
+
                 if not opts.quiet:
-                    minutes_remaining=(job["scheduled_at"]-datetime.datetime.now()).seconds//60
-                    sys.stdout.write("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b %s minutes remaining")
+                    minutes_remaining = (int(job["scheduled_at"]) - int(time.time())) // 60
+                    sys.stdout.write(
+                        "\b" * 80 + " %s minutes remaining (is %s)" % (minutes_remaining, job["state"]))
                     sys.stdout.flush()
                 time.sleep(5)
                 job = g5k(s)(job_href).get_raw()
@@ -252,7 +264,7 @@ try:
             exit(0)
 
         elif opts.action == "hosts-list":
-            job_href = find_job(opts.uid)
+            job_href = find_job(opts.uid, [opts.site])
             job = g5k(s)(job_href).get_raw()
             if job["state"] == "running":
                 print("\n".join(job["assigned_nodes"]))
@@ -260,6 +272,9 @@ try:
             else:
                 print("Cannot show hosts, job is %s " % job["state"])
                 exit(-1)
+        elif opts.action == "install":
+            if opts.application == "salt":
+                print("install salt")
 
     if opts.command == "dep":
         if opts.action == "add":
@@ -283,12 +298,17 @@ try:
             exit(0)
 
         elif opts.action == "wait":
-            dep_href = find_dep(opts.uid)
+            dep_href = find_dep(opts.uid, [opts.site])
             k, v = opts.filter.split("=")
-            while g5k(s)(dep_href).get_raw()[k] != v:
+            dep = g5k(s)(dep_href).get_raw()
+            while dep[k] != v:
                 if not opts.quiet:
-                    sys.stdout.write(".")
-                time.sleep(2)
+                    minutes_elapsed = (int(time.time()) - int(dep["created_at"])) // 60
+                    sys.stdout.write(
+                        "\b" * 80 + "%s minutes elapsed (is %s)" % (minutes_elapsed, dep["status"]))
+                    sys.stdout.flush()
+                time.sleep(5)
+                dep = g5k(s)(dep_href).get_raw()
 
             exit(0)
 
