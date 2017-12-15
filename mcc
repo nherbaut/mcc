@@ -6,6 +6,8 @@ import sys
 from mcr.libsettings import *
 import mcr.libsession
 from mcr.libprint import print_items
+import datetime
+import dateutil.parser
 import argparse
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -161,8 +163,6 @@ def find_sub_item(item, uid, sites_hints):
 
 
 def get_wall_time(duraction_adv, duration):
-    import datetime
-    import dateutil.parser
     if duraction_adv == "for":
         dt = (dateutil.parser.parse(duration) - dateutil.parser.parse("0h"))
 
