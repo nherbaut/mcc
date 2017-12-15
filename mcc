@@ -3,6 +3,7 @@
 import logging
 from mcr.libmcr import g5k, ApiError
 import sys
+import time
 from mcr.libsettings import *
 import mcr.libsession
 from mcr.libprint import print_items
@@ -10,7 +11,7 @@ import datetime
 import dateutil.parser
 import argparse
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
 import argparse
 
@@ -47,12 +48,21 @@ list_job_parser.add_argument("--sites", type=str, nargs='*', help='list of sites
 list_job_parser.add_argument("--filter", type=str, nargs='*', help='list of filters to job seach, e.g. status=running',
                              default=[])
 
+hosts_list_job_parser = action_job_parser.add_parser("hosts-list")
+hosts_list_job_parser.add_argument("uid", type=int, nargs='?', help='uid of the job for which to show the hosts',
+                                   default=None)
+
 add_job_parser = action_job_parser.add_parser("add")
 add_job_parser.add_argument("site", type=str, help='site where to deploy the job')
 add_job_parser.add_argument("node_count", type=int, help='how many node to book')
 add_job_parser.add_argument("duration_adv", type=str, help='how many node to book', choices=["until", 'for'],
                             default="for")
 add_job_parser.add_argument("duration", type=str, help='duration or expiration date for the job', default="1h")
+
+wait_job_parser = action_job_parser.add_parser("wait")
+wait_job_parser.add_argument("uid", type=str, help='uid of the job')
+wait_job_parser.add_argument("--filter", type=str, help='wait until the condition is true e.g. state=running',
+                             default="state=running")
 
 del_job_parser = action_job_parser.add_parser("del")
 del_job_parser.add_argument("uid", type=str, help='uid of the job to delete')
@@ -75,10 +85,16 @@ add_dep_parser.add_argument("--environment", type=str, help='name of the environ
 
 list_dep_parser = action_dep_parser.add_parser("list")
 list_dep_parser.add_argument("uid", type=str, nargs='?', help='uid of the dep to inspect', default=None)
-list_dep_parser.add_argument("--site", type=str, nargs='*', help='list of sites for dep search')
+list_dep_parser.add_argument("--sites", type=str, nargs='*', help='list of sites for dep search')
 list_dep_parser.add_argument("--filter", type=str, nargs='*',
                              help='list of filters to dep seach, e.g. state=running state!=error',
                              default=[])
+
+list_dep_parser = action_dep_parser.add_parser("wait")
+list_dep_parser.add_argument("uid", type=str, nargs='?', help='uid of the dep to inspect', default=None)
+list_dep_parser.add_argument("--filter", type=str, nargs='*',
+                             help='wait until the condition is true eg. status=terminate',
+                             default="status=terminated")
 
 # Parse
 opts = arg_parser.parse_args()
@@ -123,11 +139,11 @@ def get_link_href(entity, rel="self"):
     return ""
 
 
-def find_job(job, sites_hints):
+def find_job(job, sites_hints=None):
     return find_sub_item("jobs", int(job), sites_hints)
 
 
-def find_dep(dep, sites_hints):
+def find_dep(dep, sites_hints=None):
     return find_sub_item("deployments", dep, sites_hints)
 
 
@@ -138,13 +154,11 @@ def print_site_item(items_name, uid, sites, filter):
     if opts.uid is None:
         for site in g5k(s)("stable")("sites").get_items():
             if sites is None or site in sites:
-                item = g5k(s)("stable")("sites")(site)(items_name).get_items_filtered(data=not opts.quiet, **kwargs)
-                if len(item) > 0:
-                    print_items(item, opts.format)
+                return g5k(s)("stable")("sites")(site)(items_name).get_items_filtered(data=not opts.quiet, **kwargs)
+
     else:
 
-        print_items([g5k(s)(find_sub_item(items_name, uid, sites)).get_raw()], opts.format)
-        exit(0)
+        return [g5k(s)(find_sub_item(items_name, uid, sites)).get_raw()]
 
 
 def find_sub_item(item, uid, sites_hints):
@@ -189,7 +203,9 @@ try:
 
         if opts.action == "list":
 
-            print_site_item("jobs", opts.uid, opts.sites, opts.filter)
+            res = print_site_item("jobs", opts.uid, opts.sites, opts.filter)
+            print_items(res, opts.format)
+            exit(0)
 
         elif opts.action == "add":
             wt = get_wall_time(opts.duration_adv, opts.duration)
@@ -215,6 +231,24 @@ try:
             logging.info("Job %s has been deleted " % job_href)
             exit(0)
 
+        elif opts.action == "wait":
+            job_href = find_job(opts.uid)
+            k, v = opts.filter.split("=")
+            while g5k(s)(job_href).get_raw()[k] != v:
+                time.sleep(2)
+
+            exit(0)
+
+        elif opts.action == "hosts-list":
+            job_href = find_job(opts.uid)
+            job = g5k(s)(job_href).get_raw()
+            if job["state"] == "running":
+                print("\n".join(job["assigned_nodes"]))
+                exit(0)
+            else:
+                print("Cannot show hosts, job is %s " % job["state"])
+                exit(-1)
+
     if opts.command == "dep":
         if opts.action == "add":
             job = g5k(s)(find_job(opts.uid, None if opts.site is None else [opts.site])).get_raw()
@@ -230,8 +264,18 @@ try:
             print(dep_uid)
             exit(0)
 
-        if opts.action == "list":
-            print_site_item("deployments", opts.uid, opts.sites, opts.filter)
+        elif opts.action == "list":
+            res = print_site_item("deployments", opts.uid, opts.sites, opts.filter)
+            print_items(res, opts.format)
+
+            exit(0)
+
+        elif opts.action == "wait":
+            dep_href = find_dep(opts.uid)
+            k, v = opts.filter.split("=")
+            while g5k(s)(dep_href).get_raw()[k] != v:
+                time.sleep(2)
+
             exit(0)
 
 
