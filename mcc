@@ -9,11 +9,10 @@ import mcr.libsession
 from mcr.libprint import print_items
 import datetime
 import dateutil.parser
-import argparse
+import argcomplete, argparse
+
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-
-import argparse
 
 
 class ParseSettings(argparse.Action):
@@ -26,16 +25,16 @@ class ParseSettings(argparse.Action):
         namespace.settings[k] = v
 
 
-arg_parser = argparse.ArgumentParser()
-subparsers = arg_parser.add_subparsers(dest="command")
-arg_parser.add_argument("-q", help="quiet mode, just display the uids", action="store_true", dest="quiet")
-arg_parser.add_argument("--format", help="output formatting template, jinja", default=None)
-arg_parser.add_argument("--dry-run", help="just print the http requests", action="store_true", dest="dry")
-arg_parser.add_argument("--config",
-                        help="path of the config file, by default mcc will look at a settings.yaml file in the current folder",
-                        default="settings.yaml")
-arg_parser.add_argument("-s", action=ParseSettings, help="override config file settings", nargs="*", default={},
-                        dest="settings")
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers(dest="command")
+parser.add_argument("-q", help="quiet mode, just display the uids", action="store_true", dest="quiet")
+parser.add_argument("--format", help="output formatting template, jinja", default=None)
+parser.add_argument("--dry-run", help="just print the http requests", action="store_true", dest="dry")
+parser.add_argument("--config",
+                    help="path of the config file, by default mcc will look at a settings.yaml file in the current folder",
+                    default=None)
+parser.add_argument("-s", action=ParseSettings, help="override config file settings", nargs="*", default={},
+                    dest="settings")
 
 job_parser = subparsers.add_parser("job")
 
@@ -63,6 +62,8 @@ wait_job_parser = action_job_parser.add_parser("wait")
 wait_job_parser.add_argument("uid", type=str, help='uid of the job')
 wait_job_parser.add_argument("--filter", type=str, help='wait until the condition is true e.g. state=running',
                              default="state=running")
+wait_job_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
+                            default=None)
 
 del_job_parser = action_job_parser.add_parser("del")
 del_job_parser.add_argument("uid", type=str, help='uid of the job to delete')
@@ -95,9 +96,12 @@ list_dep_parser.add_argument("uid", type=str, nargs='?', help='uid of the dep to
 list_dep_parser.add_argument("--filter", type=str, nargs='*',
                              help='wait until the condition is true eg. status=terminate',
                              default="status=terminated")
+list_dep_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
+                            default=None)
 
 # Parse
-opts = arg_parser.parse_args()
+argcomplete.autocomplete(parser)
+opts = parser.parse_args()
 
 settings_api_url, settings_login, settings_pwd, settings_ssh_key_file_public \
     , settings_ssh_key_file_private, settings_g5k_alias, settings_environment \
@@ -232,10 +236,18 @@ try:
             exit(0)
 
         elif opts.action == "wait":
-            job_href = find_job(opts.uid)
+            job_href = find_job(opts.uid,[opts.site])
             k, v = opts.filter.split("=")
-            while g5k(s)(job_href).get_raw()[k] != v:
-                time.sleep(2)
+
+            job=g5k(s)(job_href).get_raw()
+            while job[k] != v:
+                print(job_href,job[k])
+                if not opts.quiet:
+                    minutes_remaining=(job["scheduled_at"]-datetime.datetime.now()).seconds//60
+                    sys.stdout.write("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b %s minutes remaining")
+                    sys.stdout.flush()
+                time.sleep(5)
+                job = g5k(s)(job_href).get_raw()
 
             exit(0)
 
@@ -274,6 +286,8 @@ try:
             dep_href = find_dep(opts.uid)
             k, v = opts.filter.split("=")
             while g5k(s)(dep_href).get_raw()[k] != v:
+                if not opts.quiet:
+                    sys.stdout.write(".")
                 time.sleep(2)
 
             exit(0)

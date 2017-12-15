@@ -7,7 +7,21 @@ Users should be able to perform the following tasks in one line:
 - deploy system to machine
 - wipe everything up
 
+
+# prerequisites
+
+- python2 or python3
+- easy_install
+
+# installation
+
+- sudo make install
+
 # usage
+
+
+
+# sample script
 
 ```bash
 

@@ -18,7 +18,7 @@ clean-pyc:
 		find . -name '__pycache__' -exec rm -fr {} +
 
 install: clean
-		python setup.py install
+		python3 setup.py install
 
 build:
 	    .venv/bin/python setup.py bdist_egg
