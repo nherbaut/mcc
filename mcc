@@ -3,19 +3,36 @@
 import logging
 from mcr.libmcr import g5k, ApiError
 import sys
-import time
 from mcr.libsettings import *
-from mcr.libsession import session as s
+import mcr.libsession
 from mcr.libprint import print_items
 import argparse
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-arger = argparse.ArgumentParser()
-subparsers = arger.add_subparsers(dest="command")
-arger.add_argument("-q", help="quiet mode, just display the uids", action="store_true", dest="quiet")
-arger.add_argument("--format", help="output formatting template, jinja", default=None)
-arger.add_argument("--dry-run", help="just print the http requests", action="store_true", dest="dry")
+import argparse
+
+
+class ParseSettings(argparse.Action):
+
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        super(ParseSettings, self).__init__(option_strings, dest, **kwargs)
+
+    def __call__(self, parser, namespace, value, option_string=None):
+        k, v = value.split('=')
+        namespace.settings[k] = v
+
+
+arg_parser = argparse.ArgumentParser()
+subparsers = arg_parser.add_subparsers(dest="command")
+arg_parser.add_argument("-q", help="quiet mode, just display the uids", action="store_true", dest="quiet")
+arg_parser.add_argument("--format", help="output formatting template, jinja", default=None)
+arg_parser.add_argument("--dry-run", help="just print the http requests", action="store_true", dest="dry")
+arg_parser.add_argument("--config",
+                        help="path of the config file, by default mcc will look at a settings.yaml file in the current folder",
+                        default="settings.yaml")
+arg_parser.add_argument("-s", action=ParseSettings, help="override config file settings", nargs="*", default={},
+                        dest="settings")
 
 job_parser = subparsers.add_parser("job")
 
@@ -23,8 +40,8 @@ action_job_parser = job_parser.add_subparsers(dest="action")
 
 list_job_parser = action_job_parser.add_parser("list")
 list_job_parser.add_argument("uid", type=int, nargs='?', help='uid of the job to inspect', default=None)
-list_job_parser.add_argument("--site", type=str, nargs='*', help='list of sites for job search',
-                             default=[settings_default_site])
+list_job_parser.add_argument("--sites", type=str, nargs='*', help='list of sites for job search',
+                             default=None)
 list_job_parser.add_argument("--filter", type=str, nargs='*', help='list of filters to job seach, e.g. status=running',
                              default=[])
 
@@ -36,7 +53,7 @@ add_job_parser.add_argument("--walltime", type=str, help='wall time for the job'
 del_job_parser = action_job_parser.add_parser("del")
 del_job_parser.add_argument("uid", type=str, help='uid of the job to delete')
 del_job_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
-                            default=settings_default_site)
+                            default=None)
 
 dep_parser = subparsers.add_parser("dep")
 
@@ -48,7 +65,7 @@ add_dep_parser.add_argument("nodes", type=str, nargs='*',
                             help='names of the nodes on which to perform the deployement. all nodes from the job are deployed if ommited',
                             default=None)
 add_dep_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
-                            default=settings_default_site)
+                            default=None)
 add_dep_parser.add_argument("--environment", type=str, help='name of the environment to install',
                             default="debian9-x64-base")
 
@@ -60,7 +77,27 @@ list_dep_parser.add_argument("--filter", type=str, nargs='*',
                              default=[])
 
 # Parse
-opts = arger.parse_args()
+opts = arg_parser.parse_args()
+
+settings_api_url, settings_login, settings_pwd, settings_ssh_key_file_public \
+    , settings_ssh_key_file_private, settings_g5k_alias, settings_environment \
+    , settings_default_site, settings_ssh_key = load_settings(opts.config, opts.settings)
+
+# default values
+
+# can't have both -s default_site=... and --sites ...
+if "default_site" in opts.settings and opts.__contains__("sites") and opts.sites is not None:
+    print("Can't override both default site and possible sites")
+    exit(1)
+
+if opts.__contains__("site") and opts.site is None:
+    opts.site = settings_default_site
+if opts.__contains__("sites") and opts.sites is None:
+    opts.sites = [settings_default_site]
+
+# create API session
+
+s = mcr.libsession.create_session(settings_api_url, settings_login, settings_pwd)
 
 
 def get_link_href(entity, rel="self"):
@@ -79,19 +116,19 @@ def find_dep(dep, sites_hints):
     return find_sub_item("deployments", dep, sites_hints)
 
 
-def print_site_item(items_name, uid, site, filter):
+def print_site_item(items_name, uid, sites, filter):
     kwargs = {splat[0]: splat[1] for splat in (item.split("=") for item in filter)}
     kwargs["user_uid"] = settings_login
 
     if opts.uid is None:
         for site in g5k(s)("stable")("sites").get_items():
-            if opts.site is None or site in opts.site:
+            if sites is None or site in sites:
                 item = g5k(s)("stable")("sites")(site)(items_name).get_items_filtered(data=not opts.quiet, **kwargs)
                 if len(item) > 0:
                     print_items(item, opts.format)
     else:
 
-        print_items([g5k(s)(find_sub_item(items_name, uid, site)).get_raw()], opts.format)
+        print_items([g5k(s)(find_sub_item(items_name, uid, sites)).get_raw()], opts.format)
         exit(0)
 
 
@@ -127,7 +164,7 @@ try:
 
         if opts.action == "list":
 
-            print_site_item("jobs", opts.uid, opts.site, opts.filter)
+            print_site_item("jobs", opts.uid, opts.sites, opts.filter)
 
         elif opts.action == "add":
             job_uid = g5k(s)("stable")("sites")(opts.site).post_job(node_count=opts.node_count,
@@ -158,7 +195,7 @@ try:
             exit(0)
 
         if opts.action == "list":
-            print_site_item("deployments", opts.uid, opts.site, opts.filter)
+            print_site_item("deployments", opts.uid, opts.sites, opts.filter)
             exit(0)
 
 

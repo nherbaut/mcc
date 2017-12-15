@@ -100,6 +100,8 @@ class Kolector:
                         res.append(item)
                     else:
                         res.append(item["uid"])
+        else:
+            raise ApiError(r.status_code, r.text)
 
         return res
 

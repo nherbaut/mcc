@@ -12,7 +12,7 @@ setup(
     author='Nicolas Herbaut',
     author_email='nicolas.herbaut@univ-grenoble-alpes.fr',
     url='https://nextnet.top',
-    # scripts=['bin/docker-spy'],
+     scripts=['mcc'],
     install_requires=install_requires,
     packages=find_packages()
 )
