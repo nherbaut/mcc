@@ -4,6 +4,8 @@ import paramiko
 import time
 import logging
 import re
+import jinja2
+import yaml, json
 
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -22,9 +24,14 @@ def install_salt_minion(hostname, private_key, host_name, ip):
                              private_key)
 
 
-def install_salt_master(hostname, private_key, host_name, ip):
+def install_salt_master(hostname, private_key, host_alias, ip, settings):
+    if "salt_master_template" in settings:
+        with open(settings["salt_master_template"]) as f:
+            master_yaml_template = jinja2.Template(f.read()).render({**settings, **{"host_alias": host_alias}})
+            master_json_template = json.dumps(yaml.load(master_yaml_template))
+
     return exec_node_command(hostname,
-                             "curl -L https://bootstrap.saltstack.com | sh -s -- -M -i %s -A %s" % (host_name, ip),
+                             "curl -L https://bootstrap.saltstack.com | sh -s -- -M -i %s -A %s -J %s" % (host_alias, ip,master_json_template),
                              private_key)
 
 

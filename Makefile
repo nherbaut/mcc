@@ -1,4 +1,4 @@
-all : clean freeze build
+all : clean  build
 
 venv: .venv/bin/activate
 

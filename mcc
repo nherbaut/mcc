@@ -45,7 +45,7 @@ def find_dep(dep, sites_hints=None):
 
 def print_site_item(items_name, uid, sites, filter):
     kwargs = {splat[0]: splat[1] for splat in (item.split("=") for item in filter)}
-    kwargs["user_uid"] = settings_login
+    kwargs["user_uid"] = settings["login"]
 
     if opts.uid is None:
         for site in g5k(s)("stable")("sites").get_items():
@@ -191,9 +191,7 @@ list_dep_parser.add_argument("--site", type=str, nargs='?', help='hint of where 
 argcomplete.autocomplete(parser)
 opts = parser.parse_args()
 
-settings_api_url, settings_login, settings_pwd, settings_ssh_key_file_public \
-    , settings_ssh_key_file_private, settings_g5k_alias, settings_environment \
-    , settings_default_site, settings_ssh_key = load_settings(opts.config, opts.settings)
+settings = merge_settings(opts.config, opts.settings)
 
 # default values
 
@@ -203,12 +201,12 @@ if "default_site" in opts.settings and opts.__contains__("sites") and opts.sites
     exit(1)
 
 if opts.__contains__("site") and opts.site is None:
-    opts.site = settings_default_site
+    opts.site = settings["default_site"]
 if opts.__contains__("sites") and opts.sites is None:
-    opts.sites = [settings_default_site]
+    opts.sites = [settings["default_site"]]
 
 # create API session
-s = mcr.libsession.create_session(settings_api_url, settings_login, settings_pwd)
+s = mcr.libsession.create_session(settings["api-backend"], settings["login"], settings["pwd"])
 
 
 class Parsing():
@@ -245,21 +243,24 @@ class Parsing():
 
             for i, host in enumerate(self.job_host_list()):
                 if i == 0:
-                    master_ip = get_ip(host, settings_ssh_key_file_private, "eth0")
+                    master_ip = get_ip(host, settings["ssh_key_file_private"], "eth0")
 
                     print("master ip: %s" % master_ip)
                     print("installing master in %s" % host)
 
                     t = threading.Thread(target=install_salt_master,
-                                         args=(host, settings_ssh_key_file_private, "h0", master_ip))
+                                         args=(
+                                         host, settings["ssh_key_file_private"], "h0", master_ip, settings))
                     t.start()
                     threads.append(t)
                 else:
-                    print("installing minion in %s" % host)
-                    t = threading.Thread(target=install_salt_minion,
-                                         args=(host, settings_ssh_key_file_private, "h%s" % i, master_ip))
-                    t.start()
-                    threads.append(t)
+                    if False:
+                        print("installing minion in %s" % host)
+                        t = threading.Thread(target=install_salt_minion,
+                                             args=(
+                                             host, settings["ssh_key_file_private"], "h%s" % i, master_ip))
+                        t.start()
+                        threads.append(t)
             for t in threads:
                 t.join()
             print("done")
@@ -324,7 +325,7 @@ class Parsing():
         else:
             node_list = list(set(job["assigned_nodes"]) & set(self.opts.nodes))
         dep_uid = g5k(s)(get_link_href(job, "parent"))("deployments").post_provision(node_list=node_list,
-                                                                                     key=settings_ssh_key,
+                                                                                     key=settings["ssh_key"],
                                                                                      environment=self.opts.environment)
         print(dep_uid)
 
