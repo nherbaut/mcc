@@ -21,6 +21,7 @@ def print_items(items, print_template):
 
         template = Template(print_template)
         now = int(time.time())
+
         for item in items:
             item["now"] = now
             print(template.render(**item))

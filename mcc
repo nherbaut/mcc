@@ -10,6 +10,8 @@ from mcr.libprint import print_items
 import datetime
 import dateutil.parser
 import argcomplete, argparse
+from mcr.libsalt import *
+import threading
 
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
@@ -209,39 +211,65 @@ if opts.__contains__("sites") and opts.sites is None:
 s = mcr.libsession.create_session(settings_api_url, settings_login, settings_pwd)
 
 
-class ParseJob():
+class Parsing():
 
     def __init__(self, opts):
         self.opts = opts
 
     def run(self):
 
-        if self.opts.command == "job":
-            self.handle_job()
-
-        if self.opts.command == "dep":
-            self.handle_dep()
+        switch = {"job": self.handle_job, "dep": self.handle_dep}
+        switch[self.opts.command]()
 
     def handle_job(self):
-        if self.opts.action == "list":
-            self.job_list()
-        elif self.opts.action == "add":
-            self.job_add()
-        elif self.opts.action == "del":
-            self.job_del()
-        elif self.opts.action == "wait":
-            self.job_wait()
-        elif self.opts.action == "hosts-list":
-            self.job_host_list()
-        elif self.opts.action == "install":
-            self.job_install()
+
+        switch = {"list": self.job_list_print,
+                  "add": self.job_add,
+                  "del": self.job_del,
+                  "wait": self.job_wait,
+                  "hosts-list": self.job_host_list_print,
+                  "install": self.job_install}
+
+        switch[self.opts.action]()
+
+    def handle_dep(self):
+        switch = {"add": self.dep_add,
+                  "list": self.dep_list,
+                  "wait": self.dep_wait}
+
+        switch[self.opts.action]()
 
     def job_install(self):
         if self.opts.application == "salt":
-            print("insall salt")
+            threads = []
+
+            for i, host in enumerate(self.job_host_list()):
+                if i == 0:
+                    master_ip = get_ip(host, settings_ssh_key_file_private, "eth0")
+
+                    print("master ip: %s" % master_ip)
+                    print("installing master in %s" % host)
+
+                    t = threading.Thread(target=install_salt_master,
+                                         args=(host, settings_ssh_key_file_private, "h0", master_ip))
+                    t.start()
+                    threads.append(t)
+                else:
+                    print("installing minion in %s" % host)
+                    t = threading.Thread(target=install_salt_minion,
+                                         args=(host, settings_ssh_key_file_private, "h%s" % i, master_ip))
+                    t.start()
+                    threads.append(t)
+            for t in threads:
+                t.join()
+            print("done")
 
     def job_list(self):
         res = print_site_item("jobs", self.opts.uid, self.opts.sites, self.opts.filter)
+        return res
+
+    def job_list_print(self):
+        res = self.job_list()
         print_items(res, self.opts.format)
 
     def job_add(self):
@@ -277,24 +305,17 @@ class ParseJob():
             time.sleep(5)
             job = g5k(s)(job_href).get_raw()
 
+    def job_host_list_print(self):
+        hosts = self.job_host_list()
+        print("\n".join(hosts))
+
     def job_host_list(self):
         job_href = find_job(self.opts.uid, [self.opts.site])
         job = g5k(s)(job_href).get_raw()
         if job["state"] == "running":
-            print("\n".join(job["assigned_nodes"]))
-
+            return job["assigned_nodes"]
         else:
             raise Exception("Cannot show hosts, job is %s " % job["state"])
-
-    def handle_dep(self):
-        if self.opts.action == "add":
-            self.dep_add()
-
-        elif self.opts.action == "list":
-            self.dep_list()
-
-        elif self.opts.action == "wait":
-            self.dep_wait()
 
     def dep_add(self):
         job = g5k(s)(find_job(self.opts.uid, None if self.opts.site is None else [self.opts.site])).get_raw()
@@ -321,13 +342,13 @@ class ParseJob():
                 sys.stdout.write(
                     "\b" * 80 + "%s minutes elapsed (is %s)" % (minutes_elapsed, dep["status"]))
                 sys.stdout.flush()
-            time.sleep(5)
+            time.sleep(10)
             dep = g5k(s)(dep_href).get_raw()
 
 
 try:
 
-    ParseJob(opts).run()
+    Parsing(opts).run()
     exit(0)
 
 except KeyboardInterrupt:
