@@ -250,17 +250,17 @@ class Parsing():
 
                     t = threading.Thread(target=install_salt_master,
                                          args=(
-                                         host, settings["ssh_key_file_private"], "h0", master_ip, settings))
+                                             host, settings["ssh_key_file_private"], "h0", master_ip, settings))
                     t.start()
                     threads.append(t)
                 else:
-                    if False:
-                        print("installing minion in %s" % host)
-                        t = threading.Thread(target=install_salt_minion,
-                                             args=(
-                                             host, settings["ssh_key_file_private"], "h%s" % i, master_ip))
-                        t.start()
-                        threads.append(t)
+
+                    print("installing minion in %s" % host)
+                    t = threading.Thread(target=install_salt_minion,
+                                         args=(
+                                             host, settings["ssh_key_file_private"], "h%s" % i, master_ip, settings))
+                    t.start()
+                    threads.append(t)
             for t in threads:
                 t.join()
             print("done")

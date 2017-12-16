@@ -20,10 +20,28 @@ def get_ip(hostname, private_key, iface):
     return re.findall(" +inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})", ip_res)[0]
 
 
-def install_salt_minion(hostname, private_key, host_name, ip):
-    return exec_node_command(hostname,
-                             "curl -L https://bootstrap.saltstack.com | sh -s -- -i %s -A %s" % (host_name, ip),
-                             private_key)
+def install_salt_minion(hostname, private_key, host_alias, ip, settings):
+    install_states_commands = []
+    install_states_commands.append('curl -o bootstrap-salt.sh -L https://bootstrap.saltstack.com')
+
+    if settings and "salt_minion_template" in settings:
+        logging.info("installing salt minion with templates")
+
+        with open(settings["salt_minion_template"]) as f:
+            minion_yaml_template = jinja2.Template(f.read()).render({**settings, **{"host_alias": host_alias}})
+            minion_json_template = json.dumps(yaml.load(minion_yaml_template))
+
+        install_states_commands.append(install_states_commands.append(
+            'sh bootstrap-salt.sh -F -i %s -A %s  -j \'"%s"\'' % (
+                host_alias, ip,
+                minion_json_template.replace("\"", "\\\""))))
+
+    else:
+        logging.info("installing vanilla salt minion")
+        install_states_commands.append("sh bootstrap-salt.sh -F -i %s -A %s" % (host_alias, ip))
+
+    for sub_command in install_states_commands:
+        logging.info(exec_node_command(hostname, sub_command, private_key))
 
 
 def install_salt_master(hostname, private_key, host_alias, ip, settings):
@@ -55,7 +73,7 @@ def install_salt_master(hostname, private_key, host_alias, ip, settings):
 
     else:
         logging.info("installing vanilla salt master")
-        install_states_commands.append("sh bootstrap-salt.sh -M -i %s -A %s" % (host_alias, ip))
+        install_states_commands.append("sh bootstrap-salt.sh -F -M -i %s -A %s" % (host_alias, ip))
 
     for sub_command in install_states_commands:
         logging.info(exec_node_command(hostname, sub_command, private_key))
