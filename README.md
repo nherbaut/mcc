@@ -19,83 +19,23 @@ Users should be able to perform the following tasks in one line:
 
 # usage
 
-
-
-# sample script
-
 ```bash
 
-export SITE=nancy
-export NIC="eth0"
-
-
-
-#ask for resources creation
-JOB=$(./mcc -q job add $SITE 10 --walltime "05:00")
-
-#wait while creating resources
-while [ `./mcc --format "{{ state=='running' }}" job list $JOB --site $SITE` == 'False' ]; do ./mcc --format "{{ scheduled_at - now }}" job list $JOB --site $SITE; sleep 2; done
-
-#resources created, now deploy
-DEP_ID=$(./mcc -q dep add $JOB --site $SITE)
-
-#wait while terminating deployment
-while [ `./mcc --format="{{ status=='terminated' }}" dep list $DEP_ID --site $SITE` == 'False' ]; do ./mcc --format="elapsed time: {{ now - created_at }}" dep list $DEP_ID --site $SITE ; sleep 2; done
-
-#tells the system which is the NIC though which the control is done (salt, monitoring traffic)
-export NIC_CONTROL="eth0"
-
-#tells the system which is the NIC though which the data flows (real payloads)
-export NIC_DATA="eth0"
-
-#build an array of all the hosts in the job
-#to work it requires to setup the proxycommand as explained in grid500
-#https://www.grid5000.fr/mediawiki/index.php/SSH#Using_SSH_with_ssh_proxycommand_setup_to_access_hosts_inside_Grid.275000
-export HOSTS=($(./mcc --format="{{ assigned_nodes|join('\n')}}" -q job list $JOB --site $SITE|sed "s/grid5000.fr/g5k/g"))
-
-#command to resolve the control IP on a host
-export ip_resolver="ip a s $NIC_CONTROL |sed -rn \"s/ +inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}).*/\1/p\""
-
-#clean up the alias file
-echo "" > experiment_alias.sh
-
-#for all hosts
-for i in "${!HOSTS[@]}"
-do
-    #command used to connect in ssh seamlessly.
-    ssh_g5k="ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i /home/nherbaut/.ssh/g5k root@${HOSTS[$i]}"
-
-    #h0 is always the master
-    if [ $i == 0 ]
-      then
-       #get the master IP
-       export MASTER_IP=$($ssh_g5k $ip_resolver)
-
-       #bootstrap the master
-       $ssh_g5k "wget -q https://gricad-gitlab.univ-grenoble-alpes.fr/vqgroup/salt-master/raw/master/vagrant/bootstrap_master.sh -O ./bootstrap.sh && bash bootstrap.sh $MASTER_IP $NIC_CONTROL $NIC_DATA h$i" &
-    else
-
-      #bootstrap the minions
-      $ssh_g5k "wget -q https://gricad-gitlab.univ-grenoble-alpes.fr/vqgroup/salt-master/raw/master/vagrant/bootstrap_minion.sh -O ./bootstrap.sh && bash bootstrap.sh $MASTER_IP $NIC_CONTROL $NIC_DATA h$i" &
-
-    fi
-
-    #dump the alias in the alias file
-    echo "alias gh$i=\"$ssh_g5k\""  >> experiment_alias.sh
-done
-
-#wait for all the bg bootstrapping tasks to complete
-wait
-
-echo "alias generated. Type source ./experiment_alias.sh"
-
-
-
-# DO YOUR EXPERIMENT HERE
-
-./mcc job del $JOB
+#create a new job for 10 machines in grenoble (you can also specify the cluster)
+%> JOB=(mcc job add grenoble 10 for 3h)
+#wait for the job to finish creating
+%> mcc job wait $JOB
+# create a new deployment for the previous job
+%> DEP=(mcc dep add $JOB)
+# wait foro the deployed to terminate
+%> mcc dep wait $DEP
+# install and configure saltstack master on one host, and saltstack minion on the other hosts
+%> mcc job install $JOB salt
+#remove the job when you're done.
+%> mcc job del $JOB
 
 ```
+
 
 # commands
 
