@@ -25,4 +25,4 @@ build:
 create-venv:
 	virtualenv --python=python3 .venv
 	. .venv/bin/activate
-	pip install -r requirements.txt   
+	pip3 install -r requirements.txt   
