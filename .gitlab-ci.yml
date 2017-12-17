@@ -8,5 +8,5 @@ build:
 
 artifacts:
   paths:
-  - dist/
-  - README.md
+    - dist/
+    - README.md
