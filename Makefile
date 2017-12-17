@@ -1,6 +1,5 @@
-all : clean  build
+all : clean  create-venv build
 
-venv: .venv/bin/activate
 
 clean: clean-build clean-pyc 
 
@@ -23,5 +22,7 @@ install: clean
 build:
 	    .venv/bin/python setup.py bdist_egg
 
-freeze:
-		. .venv/bin/activate && pip freeze | grep -v "pkg-resources" > requirements.txt
+create-venv:
+	virtualenv --python3 .venv
+	. venv/bin/activate
+	pip install -r requirements.txt   
