@@ -1,2 +1,6 @@
-job1:
-  script: "make"
+before_script:
+  - apt-get update -qq && apt-get install -y -qq python3 python-pip build-essential
+
+build:
+  script:
+    - make
