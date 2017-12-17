@@ -1,5 +1,5 @@
 before_script:
-  - apt-get update -qq && apt-get install -y -qq python3 python-pip build-essential
+  - apt-get update -qq && apt-get install -y -qq python3 python-pip build-essential virtualenv
 
 build:
   script:
