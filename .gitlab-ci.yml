@@ -5,8 +5,7 @@ before_script:
 build:
   script:
     - make
-
-artifacts:
-  paths:
-    - dist/
-    - README.md
+  artifacts:
+    paths:
+      - dist/
+      - README.md
