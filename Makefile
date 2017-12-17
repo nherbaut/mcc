@@ -24,4 +24,4 @@ build:
 	    .venv/bin/python setup.py bdist_egg
 
 freeze:
-		. .venv/bin/activate && pip freeze > requirements.txt
+		. .venv/bin/activate && pip freeze | grep -v "pkg-resources" > requirements.txt
