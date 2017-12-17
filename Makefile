@@ -23,6 +23,6 @@ build:
 	    .venv/bin/python setup.py bdist_egg
 
 create-venv:
-	virtualenv --python3 .venv
-	. venv/bin/activate
+	virtualenv --python=python3 .venv
+	. .venv/bin/activate
 	pip install -r requirements.txt   
