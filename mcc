@@ -225,7 +225,8 @@ class Parsing():
                   "del": self.job_del,
                   "wait": self.job_wait,
                   "hosts-list": self.job_host_list_print,
-                  "install": self.job_install}
+                  "install": self.job_install
+                  }
 
         switch[self.opts.action]()
 
@@ -242,7 +243,7 @@ class Parsing():
 
             for i, host in enumerate(self.job_host_list()):
                 if i == 0:
-                    master_ip = get_ip(host, settings["ssh_key_file_private"], "eth0")
+                    master_ip = get_ip(host, settings["ssh_key_file_private"], settings["salt_host_control_iface"])
 
                     print("master ip: %s" % master_ip)
                     print("installing master in %s" % host)

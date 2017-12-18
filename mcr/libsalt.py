@@ -7,14 +7,13 @@ import re
 import jinja2
 import yaml, json
 
-logging.basicConfig(level=logging.ERROR)
-
+logging.getLogger("paramiko").setLevel(logging.WARNING)
 install_states_command_template = "rm -rf {{ salt_state_dest_folder }}  && git  clone {{ salt_states_repo_url }}  --branch {{ salt_states_repo_branch }} --single-branch /{{ salt_state_dest_folder }}"
 
 
 def get_ip(hostname, private_key, iface):
     command = 'ip a s %s ' % iface
-
+    print(command)
     ip_res = str(exec_node_command(hostname, command, private_key))
     print(ip_res)
     return re.findall(" +inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})", ip_res)[0]
@@ -87,7 +86,7 @@ def exec_node_command(host_name, command, private_key):
 
         stdin, stdout, stderr = client.exec_command("ssh root@%s %s" % (host_name, command))
         res = stdout.read()
-        print(stderr.read())
+        logging.warning(stderr.read())
         stdin.close()
         stdout.close()
         stderr.close()
