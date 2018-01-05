@@ -16,7 +16,11 @@ def get_ip(hostname, private_key, iface):
     print(command)
     ip_res = str(exec_node_command(hostname, command, private_key))
     print(ip_res)
-    return re.findall(" +inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})", ip_res)[0]
+    all_ips = re.findall(" +inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})", ip_res)
+    if len(all_ips) > 0:
+        return all_ips[0]
+    else:
+        raise Exception("failed to retreive master ip on interface %s. Available interfaces are: \n %s" % (iface, str(exec_node_command(hostname, "ip l", private_key))))
 
 
 def install_salt_minion(hostname, private_key, host_alias, ip, settings):
