@@ -1,6 +1,4 @@
-export NIC_CONTROL=$2
 export JOB=$1
-export PRIVATE_KEY_PATH=/home/nherbaut/.ssh/g5k
 
 #build an array of all the hosts in the job
 #to work it requires to setup the proxycommand as explained in grid500
@@ -14,7 +12,7 @@ echo "" > experiment_alias.sh
 for i in "${!HOSTS[@]}"
 do
     #command used to connect in ssh seamlessly.
-    ssh_g5k="ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i $PRIVATE_KEY_PATH root@${HOSTS[$i]}"
+    ssh_g5k="ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i /home/nherbaut/.ssh/g5k root@${HOSTS[$i]}"
     echo "alias gh$i=\"$ssh_g5k\""  >> experiment_alias.sh
 done
 
