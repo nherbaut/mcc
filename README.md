@@ -67,6 +67,26 @@ ssh_key_file_private: /home/nherbaut/.ssh/g5k
 mailto: nicolas.herbaut@gmail.com
 environment: debian9-x64-base
 default_site: grenoble
+```
+
+
+# help
+
+All the commands are documented through the CLI
+
+```
+mcc job --help
+```
+
+#Saltstack support
+
+Saltstack is a configuration manager (such as ansible, puppet or chef) that can be used to install, configure and run complex orchestration operations to a cluster comprised of 1 master and several minions
+
+MCC support installing saltstack on target machines through the mcc job install <JOBID> salt command.
+
+By default, MCC installs a vanilla salstack. It could be tweaked thanks to specific parameters in the settings.yaml file:
+
+```yaml
 
 #salt installation parameters
 #all variables can be injected in salt templates
@@ -87,10 +107,43 @@ salt_pre_bootstrap_commands:
 
 ```
 
-# help
+<salt_states_repo_url> can be used to clone a git repository containing the saltstack receipes, so that the salt infrastructure is ready for the experiment.
 
-All the commands are documented through the CLI
 
+## Minion templating
+
+Every variable declared in the settings.yaml file will be resolved in the minion and master files. For example, to configure the salt-mine function at the minion level, the salt minion template can be :
+
+```yaml
+rejected_retry: True
+mine_interval: 1
+hostsfile:
+  alias: controlpath_ip
+mine_functions:
+  datapath_ip:
+    - mine_function: network.ip_addrs
+    - {{ salt_host_data_iface }}
+  controlpath_ip:
+    - mine_function: network.ip_addrs
+    - {{ salt_host_control_iface }}
+  docker_spy:
+    - mine_function: dspy.dump
+    - {{ salt_host_data_iface }}
 ```
-mcc job --help
+
+in this case, mcc will pickup the salt_host_data_iface and salt_host_control_iface variables from the settings to install them in the minion.
+
+## Master templating
+
+The master can be templetized to add formulas or pillar data
+
+```yaml
+open_mode: True
+auto_accept: True
+file_roots:
+  base:
+    - /srv/salt
+    - /srv/formulas/hostsfile-formula
+    - /srv/formulas/openssh-formula
+    - /srv/formulas/docker-formula
 ```
