@@ -276,9 +276,9 @@ class Parsing():
     def job_add(self):
         wt = get_wall_time(self.opts.duration_adv, self.opts.duration)
         properties = []
-        resources = []
-        resources.append(("nodes", self.opts.node_count))
-        resources.append(("walltime", wt))
+        resources = dict()
+        resources["nodes"] = self.opts.node_count
+        resources["walltime"] = wt
         if self.opts.site in get_sites():
             site = self.opts.site
         else:
