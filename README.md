@@ -27,7 +27,7 @@ Users should be able to perform the following tasks in one line:
 #wait for the job to complete
 %> mcc job wait $JOB
 # create a new deployment to install the OSes on the allocated machines
-# can select a subset of the jobs
+# can select a subset of the hosts from the job
 %> DEP=(mcc dep add $JOB)
 # wait for the deployment to complete
 %> mcc dep wait $DEP
