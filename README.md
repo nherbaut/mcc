@@ -83,7 +83,7 @@ mcc job --help
 
 Saltstack is a configuration manager (such as ansible, puppet or chef) that can be used to install, configure and run complex orchestration operations to a cluster comprised of 1 master and several minions
 
-MCC support installing saltstack on target machines through the `mcc job install JOBID` salt command.
+MCC supports installing saltstack on target machines through the `mcc job install JOBID salt` command.
 
 By default, MCC installs a vanilla saltstack. It can be tweaked thanks to specific parameters in the `settings.yaml` file:
 
@@ -113,7 +113,7 @@ salt_pre_bootstrap_commands:
 
 ## Minion templating
 
-Every variable declared in the settings.yaml file will be resolved in the minion and master files. For example, to configure the salt-mine function at the minion level, the salt minion template can be :
+Every variable declared in the settings.yaml file will be resolved in the minion and master files. For example, to configure the salt-mine functions at the minion level, the salt minion template can be :
 
 ```yaml
 rejected_retry: True
