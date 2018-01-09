@@ -243,7 +243,7 @@ class Parsing():
 
             for i, host in enumerate(self.job_host_list()):
                 if i == 0:
-                    master_ip = get_ip(host, settings["ssh_key_file_private"], settings["salt_master_interface"])
+                    master_ip = get_ip(host, settings["ssh_key_file_private"], settings["salt_host_control_iface"])
 
                     print("master ip: %s" % master_ip)
                     print("installing master in %s" % host)
@@ -276,9 +276,9 @@ class Parsing():
     def job_add(self):
         wt = get_wall_time(self.opts.duration_adv, self.opts.duration)
         properties = []
-        resources = dict()
-        resources["nodes"] = self.opts.node_count
-        resources["walltime"] = wt
+        resources = []
+        resources.append(("nodes", self.opts.node_count))
+        resources.append(("walltime", wt))
         if self.opts.site in get_sites():
             site = self.opts.site
         else:
