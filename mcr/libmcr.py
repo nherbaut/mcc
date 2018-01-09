@@ -127,16 +127,13 @@ class Kolector:
     def url(self):
         return "/".join(self.path_elements)
 
-    def post_job(self, resources=[('nodes', 5), ('walltime', '03:00')], properties={}, types=["deploy"]):
+    def post_job(self, resources={"node_count": "10", "walltime": "2:00"}, properties={}, types=["deploy"]):
 
         data = {}
         data["resources"] = ",".join(["%s=%s" % item for item in resources])
-        print(resources)
-        res = resources["walltime"].split(":")
-        h = res[0]
-        m = res[1]
         data["properties"] = ",".join(["%s=%s" % item for item in properties])
         data["types"] = types
+        h, m = resources[1][1].split(":")
         data["command"] = "sleep %d" % (int(h) * 3600 + int(m) * 60)
         r = self.session.post("/".join(self.path_elements + ["jobs"]), json=data)
         if not r.status_code == 201:
