@@ -5,6 +5,7 @@ Users should be able to perform the following tasks in one line:
 
 - allocate machines
 - deploy system to machines
+- run an experiment and collect output data
 - wipe everything up
 
 
@@ -51,9 +52,9 @@ or based on a configuration file
 mcc --config ./settings.yaml job list
 ```
 
-by default mcc looks for settings.yaml in the working folder or in ~/mcc/settings.yaml
+by default mcc looks for `settings.yaml` in the working folder or in ~/mcc/settings.yaml
 
-the provided settings.yaml.tpl can be used to know what are the parameters
+the provided `settings.yaml.tpl` can be used to know what are the parameters
 
 # settings file
 
@@ -82,9 +83,9 @@ mcc job --help
 
 Saltstack is a configuration manager (such as ansible, puppet or chef) that can be used to install, configure and run complex orchestration operations to a cluster comprised of 1 master and several minions
 
-MCC support installing saltstack on target machines through the mcc job install <JOBID> salt command.
+MCC support installing saltstack on target machines through the `mcc job install JOBID` salt command.
 
-By default, MCC installs a vanilla salstack. It could be tweaked thanks to specific parameters in the settings.yaml file:
+By default, MCC installs a vanilla saltstack. It can be tweaked thanks to specific parameters in the `settings.yaml` file:
 
 ```yaml
 
@@ -107,7 +108,7 @@ salt_pre_bootstrap_commands:
 
 ```
 
-<salt_states_repo_url> can be used to clone a git repository containing the saltstack receipes, so that the salt infrastructure is ready for the experiment.
+`salt_states_repo_url` can be used to clone a git repository at bootstrapping time containing the saltstack receipes so that the salt infrastructure is ready for the experiment.
 
 
 ## Minion templating
@@ -131,7 +132,7 @@ mine_functions:
     - {{ salt_host_data_iface }}
 ```
 
-in this case, mcc will pickup the salt_host_data_iface and salt_host_control_iface variables from the settings to install them in the minion.
+in this case, mcc will pickup the `salt_host_data_iface` and `salt_host_control_iface` variables from the settings to install them in the minion.
 
 ## Master templating
 
