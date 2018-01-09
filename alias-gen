@@ -1,3 +1,5 @@
+#sample tool to generate a alias file for the machines so that you can directly ssh to them 
+# call this script with the job id, source the resulting experiment_alias.sh file and use gh0-ghn to log to the machines
 export JOB=$1
 
 #build an array of all the hosts in the job

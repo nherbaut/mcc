@@ -243,7 +243,7 @@ class Parsing():
 
             for i, host in enumerate(self.job_host_list()):
                 if i == 0:
-                    master_ip = get_ip(host, settings["ssh_key_file_private"], settings["salt_host_control_iface"])
+                    master_ip = get_ip(host, settings["ssh_key_file_private"], settings["salt_master_interface"])
 
                     print("master ip: %s" % master_ip)
                     print("installing master in %s" % host)
