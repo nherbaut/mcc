@@ -20,7 +20,8 @@ def get_ip(hostname, private_key, iface):
     if len(all_ips) > 0:
         return all_ips[0]
     else:
-        raise Exception("failed to retreive master ip on interface %s. Available interfaces are: \n %s" % (iface, str(exec_node_command(hostname, "ip l", private_key))))
+        raise Exception("failed to retreive master ip on interface %s. Available interfaces are: \n %s" % (
+            iface, str(exec_node_command(hostname, "ip l", private_key))))
 
 
 def install_salt_minion(hostname, private_key, host_alias, ip, settings):
@@ -44,7 +45,8 @@ def install_salt_minion(hostname, private_key, host_alias, ip, settings):
         install_states_commands.append("sh bootstrap-salt.sh -F -i %s -A %s" % (host_alias, ip))
 
     for sub_command in install_states_commands:
-        logging.info(exec_node_command(hostname, sub_command, private_key))
+        for res in exec_node_command(hostname, sub_command, private_key):
+            logging.info(res)
 
 
 def install_salt_master(hostname, private_key, host_alias, ip, settings):
@@ -79,7 +81,17 @@ def install_salt_master(hostname, private_key, host_alias, ip, settings):
         install_states_commands.append("sh bootstrap-salt.sh -F -M -i %s -A %s" % (host_alias, ip))
 
     for sub_command in install_states_commands:
-        logging.info(exec_node_command(hostname, sub_command, private_key))
+        for res in exec_node_command(hostname, sub_command, private_key):
+            logging.info(res)
+
+
+def post_install_commands(hostname, private_key, host_alias, ip, settings):
+    install_states_commands = [jinja2.Template(command).render(**settings) for command in
+                               settings.get("salt_post_bootstrap_commands", [])]
+    for sub_command in install_states_commands:
+        logging.info("EXECUTING " + sub_command)
+        for res in exec_node_command(hostname, sub_command, private_key):
+            logging.info(res)
 
 
 def exec_node_command(host_name, command, private_key):
@@ -90,8 +102,11 @@ def exec_node_command(host_name, command, private_key):
 
         stdin, stdout, stderr = client.exec_command("ssh root@%s %s" % (host_name, command))
         res = stdout.read()
-        logging.warning(stderr.read())
+        for errline in str(stderr.read()).split("\\n"):
+            logging.warning(" %s > " % host_name + str(errline))
         stdin.close()
         stdout.close()
         stderr.close()
-        return res
+        return [" %s > " % host_name + str(r) for r in str(res).split("\\n")]
+    else:
+        return []

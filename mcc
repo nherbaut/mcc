@@ -263,6 +263,9 @@ class Parsing():
                     threads.append(t)
             for t in threads:
                 t.join()
+
+                post_install_commands(host, settings["ssh_key_file_private"], "h%s" % i, master_ip, settings)
+
             print("done")
 
     def job_list(self):
@@ -277,6 +280,7 @@ class Parsing():
         wt = get_wall_time(self.opts.duration_adv, self.opts.duration)
         properties = []
         resources = []
+        # it sucks that we cannot have a dict, but we need to preserve key ordering for OAR
         resources.append(("nodes", self.opts.node_count))
         resources.append(("walltime", wt))
         if self.opts.site in get_sites():

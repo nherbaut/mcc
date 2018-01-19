@@ -9,6 +9,9 @@ mine_functions:
   controlpath_ip:
     - mine_function: network.ip_addrs
     - {{ salt_host_control_iface }}
+  dockerbridge_ip:
+    - mine_function: cmd.run
+    - docker network inspect -f '{{range $p, $conf := .IPAM.Config}}{{(index $conf "Gateway")}}{{end}}' bridge
   docker_spy:
     - mine_function: dspy.dump
     - {{ salt_host_data_iface }}
