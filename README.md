@@ -148,3 +148,19 @@ file_roots:
     - /srv/formulas/openssh-formula
     - /srv/formulas/docker-formula
 ```
+
+# Tools
+
+extra tools to facilitate operations are provided.
+
+## Alias-gen
+
+calling this script with a `JOB_ID` createas a `experiment_alias.sh`. When sourced, you can connect to your experiment hosts easily:
+
+```bash
+$ alias-gen 1324354
+alias generated. Type source ./experiment_alias.sh
+$ . ./experiment_alias.sh
+$ gh0 #open an ssh connection to the first host of the experiment
+$ gh1 #open an ssh connection to the second host of the experiment
+```
