@@ -6,6 +6,7 @@ import logging
 import re
 import jinja2
 import yaml, json
+from subprocess import list2cmdline
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 install_states_command_template = "rm -rf {{ salt_state_dest_folder }}  && git  clone {{ salt_states_repo_url }}  --branch {{ salt_states_repo_branch }} --single-branch /{{ salt_state_dest_folder }}"
@@ -85,6 +86,11 @@ def install_salt_master(hostname, private_key, host_alias, ip, settings):
             logging.info(res)
 
 
+#https://stackoverflow.com/questions/3163236/escape-arguments-for-paramiko-sshclient-exec-command/13786877#13786877
+def shell_escape(arg):
+    return "'%s'" % (arg.replace(r"'", r"'\''"),)
+
+
 def post_install_commands(hostname, private_key, host_alias, ip, settings):
     install_states_commands = [jinja2.Template(command).render(**settings) for command in
                                settings.get("salt_post_bootstrap_commands", [])]
@@ -100,7 +106,7 @@ def exec_node_command(host_name, command, private_key):
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect("access.grid5000.fr", key_filename=private_key)
 
-        stdin, stdout, stderr = client.exec_command("ssh root@%s %s" % (host_name, command))
+        stdin, stdout, stderr = client.exec_command("ssh root@%s %s" % (host_name, shell_escape(command)))
         res = stdout.read()
         for errline in str(stderr.read()).split("\\n"):
             logging.warning(" %s > " % host_name + str(errline))
