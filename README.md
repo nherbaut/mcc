@@ -11,8 +11,15 @@ Users should be able to perform the following tasks in one line:
 
 # prerequisites
 
-- python2 or python3
+- python3
 - easy_install
+
+## installation on ubuntu/debian
+
+``` bash
+$ apt-get install python3 python3-dev libffi-dev python3-setuptools
+$ make install
+```
 
 # installation
 
