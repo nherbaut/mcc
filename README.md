@@ -13,7 +13,8 @@ Users should be able to perform the following tasks in one line:
 
 - python3
 - easy_install
-- 
+
+## installation on ubuntu/debian
 
 ``` bash
 $ apt-get install python3 python3-dev libffi-dev python3-setuptools
