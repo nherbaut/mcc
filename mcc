@@ -244,6 +244,7 @@ class Parsing():
             for i, host in enumerate(self.job_host_list()):
                 if i == 0:
                     master_ip = get_ip(host, settings["ssh_key_file_private"], settings["salt_host_control_iface"])
+                    master_hostname = host
 
                     print("master ip: %s" % master_ip)
                     print("installing master in %s" % host)
@@ -264,7 +265,7 @@ class Parsing():
             for t in threads:
                 t.join()
 
-                post_install_commands(host, settings["ssh_key_file_private"], "h%s" % i, master_ip, settings)
+                post_install_commands(master_hostname, settings["ssh_key_file_private"], settings)
 
             print("done")
 
@@ -301,14 +302,16 @@ class Parsing():
         k, v = self.opts.filter.split("=")
         job = g5k(s)(job_href).get_raw()
         while job[k] != v:
-
             if not self.opts.quiet:
-                minutes_remaining = (int(job["scheduled_at"]) - int(time.time())) // 60
+                if "scheduled_at" in job:
+                    minutes_remaining = (int(job["scheduled_at"]) - int(time.time())) // 60
+                else:
+                    minutes_remaining = "?"
                 sys.stdout.write(
                     "\b" * 80 + " %s minutes remaining (is %s)" % (minutes_remaining, job["state"]))
                 sys.stdout.flush()
-            time.sleep(5)
-            job = g5k(s)(job_href).get_raw()
+                time.sleep(5)
+                job = g5k(s)(job_href).get_raw()
 
     def job_host_list_print(self):
         hosts = self.job_host_list()
