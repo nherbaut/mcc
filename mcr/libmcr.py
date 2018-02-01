@@ -55,16 +55,23 @@ def is_dict_matching(d1, dfilter):
     '''
 
     :param d1: the dict which values will be tested
-    :param dfilter: the dict which specifies the values to test. {"a":"b","c!":"d"} <=> d1["a"]=="b" and d2["a"]!="d"
+    :param dfilter: the dict which specifies the values to test. {"a":"b","c!":"d","e>":"f"} <=> d1["a"]=="b" and d1["c"]!="d" and int(d1["e"])>int('f')
     :return: True i
     '''
     for k, v in dfilter.items():
         if k[-1] == '!':
-            if d1.get(k[:-1], None) == dfilter[k]:
+            if d1.get(k[:-1], None) == str(dfilter[k]):
+                return False
+        elif k[-1] == '>':
+            if int(d1.get(k[:-1], 0)) <= int(dfilter[k]):
+                return False
+        elif k[-1] == '<':
+            if int(d1.get(k[:-1], 0)) >= int(dfilter[k]):
                 return False
         else:
-            if d1.get(k, None) != dfilter[k]:
+            if d1.get(k, None) != str(dfilter[k]):
                 return False
+
     return True
 
 
