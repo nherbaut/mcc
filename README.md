@@ -8,7 +8,9 @@ Users should be able to perform the following tasks in one line:
 - run an experiment and collect output data
 - wipe everything up
 
-# Summary 
+# Summary
+ - [Configuration](Configuration)
+ - [Receipes.md](Receipes)
  - [Salstack Integration](SalStack.md)
 
 
