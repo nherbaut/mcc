@@ -1,6 +1,6 @@
 # Goal
 
-provide a simple cli for grid5000 experiments. The CLi is based on modern argument cli syntax.
+provide a simple cli for grid5000 experiments. The CLi is based on modern argument cli syntax. To know more, check the [Wiki](wikis)
 Users should be able to perform the following tasks in one line:
 
 - allocate machines
