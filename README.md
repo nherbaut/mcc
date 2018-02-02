@@ -12,7 +12,7 @@ Users should be able to perform the following tasks in one line:
 
 - Grid5000
 - AWS EC2 (ongoing)
-- 
+
 
 # Philosophy 
 
