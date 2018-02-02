@@ -134,12 +134,13 @@ class Kolector:
         return "/".join(self.path_elements)
 
     def post_job(self, resources={"node_count": "10", "walltime": "2:00"}, properties={}, types=["deploy"],
-                 reservation=None):
+                 reservation=None, queue="default"):
 
         data = {}
         data["resources"] = ",".join(["%s=%s" % item for item in resources])
         data["properties"] = ",".join(["%s=%s" % item for item in properties])
         data["types"] = types
+        data["queue"] = queue
         if reservation is not None:
             data["reservation"] = reservation
         h, m = resources[1][1].split(":")

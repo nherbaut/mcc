@@ -319,8 +319,10 @@ class Parsing():
         else:
             properties.append(("cluster", "'%s'" % self.opts.site))
             site = find_site_for_cluster(self.opts.site)
+
         job_uid = g5k(s)("stable")("sites")(site).post_job(resources=resources, properties=properties,
-                                                           reservation=reservation)
+                                                           reservation=reservation,
+                                                           queue=settings.get("default_queue", "default"))
         print(job_uid)
 
     def job_del(self):
