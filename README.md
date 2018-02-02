@@ -9,9 +9,9 @@ Users should be able to perform the following tasks in one line:
 - wipe everything up
 
 # Summary
- - [Configuration](Configuration)
- - [Receipes.md](Receipes)
- - [Salstack Integration](SalStack.md)
+ - [Configuration](https://gricad-gitlab.univ-grenoble-alpes.fr/vqgroup/simple-g5k-wrapper/blob/master/Configuration.md)
+ - [Receipes](https://gricad-gitlab.univ-grenoble-alpes.fr/vqgroup/simple-g5k-wrapper/blob/master/Receipes.md)
+ - [Salstack Integration](https://gricad-gitlab.univ-grenoble-alpes.fr/vqgroup/simple-g5k-wrapper/blob/master/SalStack.md)
 
 
 
