@@ -22,5 +22,5 @@ This project is very opinionated, and keep things as simple as possible. The mai
 - do everything with one tool: no more using oarsub, kadeploy
 - bash script-friendly: every output can be formatted, so that you can use mcc withing your favorite bash script
 - scalable: deploy 1.000 nodes on 10 DC in one command.
--
+
 
