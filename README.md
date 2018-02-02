@@ -1,6 +1,6 @@
 # Goal
 
-For complete documentation, [check the Wiki](../../wikis)
+For complete documentation, [check the Wiki](../../../wikis)
 
 Provide a simple cli for grid5000 experiments. The CLi is based on modern argument cli syntax.  Users should be able to perform the following tasks in one line:
 
