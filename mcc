@@ -327,7 +327,7 @@ class Parsing():
         for index, host in enumerate(
                 [host for uid in self.opts.uid for host in self.job_host_list(uid, self.opts.site)]):
             print(
-                "alias gh%d=\"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
+                "alias ssh%d=\"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
                     index, settings["ssh_key_file_private"], host.replace("grid5000.fr", "g5k")))
 
     def job_list_print(self):
