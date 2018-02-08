@@ -124,6 +124,13 @@ parser.add_argument("--config",
 parser.add_argument("-s", action=ParseSettings, help="override config file settings", nargs="*", default={},
                     dest="settings")
 
+alias_parser = subparsers.add_parser("alias")
+
+action_alias_parser = alias_parser.add_subparsers(dest="action")
+list_alias_parser = action_alias_parser.add_parser("list")
+list_alias_parser.add_argument("uid", type=str, nargs='+', help='uids of the job sfor which to generate the aliases',
+                               default=None)
+
 job_parser = subparsers.add_parser("job")
 
 action_job_parser = job_parser.add_subparsers(dest="action")
@@ -230,8 +237,20 @@ class Parsing():
 
     def run(self):
 
-        switch = {"job": self.handle_job, "dep": self.handle_dep}
+
+        switch = {"job": self.handle_job, "dep": self.handle_dep, "alias": self.handle_alias}
+
+        if self.opts.command not in switch:
+            parser.error('please specify an action: %s' % ", ".join(switch))
         switch[self.opts.command]()
+
+    def handle_alias(self):
+        switch = {"list": self.alias_list_print}
+
+        if self.opts.action not in switch:
+            parser.error('please specify an action: %s' % ", ".join(switch))
+
+        switch[self.opts.action]()
 
     def handle_job(self):
 
@@ -243,6 +262,8 @@ class Parsing():
                   "install": self.job_install
                   }
 
+        if self.opts.action not in switch:
+            parser.error('please specify an action: %s' % ", ".join(switch))
         switch[self.opts.action]()
 
     def handle_dep(self):
@@ -250,13 +271,16 @@ class Parsing():
                   "list": self.dep_list,
                   "wait": self.dep_wait}
 
+        if self.opts.action not in switch:
+            parser.error('please specify an action: %s' % ", ".join(switch))
+
         switch[self.opts.action]()
 
     def job_install(self):
         if self.opts.application == "salt":
             threads = []
 
-            for i, host in enumerate(self.job_host_list()):
+            for i, host in enumerate(self.job_host_list(self.opts.uid, self.opts.site)):
                 if i == 0:
                     master_ip = get_ip(host, settings["ssh_key_file_private"], settings["salt_host_control_iface"])
                     master_hostname = host
@@ -296,6 +320,14 @@ class Parsing():
 
         res = print_site_item("jobs", self.opts.uid, self.opts.sites, filters)
         return res
+
+    def alias_list_print(self):
+
+        for uid in self.opts.uid:
+            for host in self.job_host_list(uid,None):
+                print(
+                    "ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@$%s" % (
+                        settings["ssh_key_file_private"], host))
 
     def job_list_print(self):
         res = self.job_list()
@@ -352,11 +384,11 @@ class Parsing():
                 job = g5k(s)(job_href).get_raw()
 
     def job_host_list_print(self):
-        hosts = self.job_host_list()
+        hosts = self.job_host_list(self.opts.uid, self.opts.site)
         print("\n".join(hosts))
 
-    def job_host_list(self):
-        job_href = find_job(self.opts.uid, [self.opts.site])
+    def job_host_list(self, uid, site):
+        job_href = find_job(uid, [site])
         job = g5k(s)(job_href).get_raw()
         if job["state"] == "running":
             return job["assigned_nodes"]
