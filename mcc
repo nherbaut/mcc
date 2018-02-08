@@ -130,6 +130,8 @@ action_alias_parser = alias_parser.add_subparsers(dest="action")
 list_alias_parser = action_alias_parser.add_parser("list")
 list_alias_parser.add_argument("uid", type=str, nargs='+', help='uids of the job sfor which to generate the aliases',
                                default=None)
+list_alias_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
+                               default=None)
 
 job_parser = subparsers.add_parser("job")
 
@@ -322,11 +324,11 @@ class Parsing():
 
     def alias_list_print(self):
 
-        for uid in self.opts.uid:
-            for host in self.job_host_list(uid, None):
-                print(
-                    "ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@$%s" % (
-                        settings["ssh_key_file_private"], host))
+        for index, host in enumerate(
+                [host for uid in self.opts.uid for host in self.job_host_list(uid, self.opts.site)]):
+            print(
+                "alias gh%d=\"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
+                    index, settings["ssh_key_file_private"], host.replace("grid5000.fr", "g5k")))
 
     def job_list_print(self):
         res = self.job_list()
@@ -403,7 +405,8 @@ class Parsing():
         dep_uid = g5k(s)(get_link_href(job, "parent"))("deployments").post_provision(node_list=node_list,
                                                                                      key=settings["ssh_key"],
                                                                                      environment=self.opts.environment,
-                                                                                     notifications=settings["mailto"])
+                                                                                     notifications=["mailto:%s" %
+                                                                                                    settings["mailto"]])
         print(dep_uid)
 
     def dep_list(self):
