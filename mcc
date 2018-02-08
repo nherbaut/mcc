@@ -237,7 +237,6 @@ class Parsing():
 
     def run(self):
 
-
         switch = {"job": self.handle_job, "dep": self.handle_dep, "alias": self.handle_alias}
 
         if self.opts.command not in switch:
@@ -324,7 +323,7 @@ class Parsing():
     def alias_list_print(self):
 
         for uid in self.opts.uid:
-            for host in self.job_host_list(uid,None):
+            for host in self.job_host_list(uid, None):
                 print(
                     "ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@$%s" % (
                         settings["ssh_key_file_private"], host))
@@ -403,7 +402,8 @@ class Parsing():
             node_list = list(set(job["assigned_nodes"]) & set(self.opts.nodes))
         dep_uid = g5k(s)(get_link_href(job, "parent"))("deployments").post_provision(node_list=node_list,
                                                                                      key=settings["ssh_key"],
-                                                                                     environment=self.opts.environment)
+                                                                                     environment=self.opts.environment,
+                                                                                     notifications=settings["mailto"])
         print(dep_uid)
 
     def dep_list(self):
