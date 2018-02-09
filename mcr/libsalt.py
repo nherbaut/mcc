@@ -8,15 +8,18 @@ import jinja2
 import yaml, json
 from subprocess import list2cmdline
 
+logger = logging.getLogger('mcc_salt')
+logger.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+logger.addHandler(ch)
+
 logging.getLogger("paramiko").setLevel(logging.WARNING)
 install_states_command_template = "rm -rf {{ salt_state_dest_folder }}  && git  clone {{ salt_states_repo_url }}  --branch {{ salt_states_repo_branch }} --single-branch /{{ salt_state_dest_folder }}"
 
 
 def get_ip(hostname, private_key, iface):
     command = 'ip a s %s ' % iface
-    print(command)
     ip_res = str(exec_node_command(hostname, command, private_key))
-    print(ip_res)
     all_ips = re.findall(" +inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})", ip_res)
     if len(all_ips) > 0:
         return all_ips[0]
@@ -26,11 +29,13 @@ def get_ip(hostname, private_key, iface):
 
 
 def install_salt_minion(hostname, private_key, host_alias, ip, settings):
-    install_states_commands = []
+    install_states_commands = [shell_escape(jinja2.Template(command).render(**settings)) for command in
+                               settings.get("salt_minion_precommands", [])]
+
     install_states_commands.append('curl -o bootstrap-salt.sh -L https://bootstrap.saltstack.com')
 
     if settings and "salt_minion_template" in settings:
-        logging.info("installing salt minion with templates")
+        logger.info("installing salt minion with templates")
 
         with open(settings["salt_minion_template"]) as f:
             minion_yaml_template = jinja2.Template(f.read()).render({**settings, **{"host_alias": host_alias}})
@@ -42,28 +47,31 @@ def install_salt_minion(hostname, private_key, host_alias, ip, settings):
                 minion_json_template.replace("\"", "\\\""))))
 
     else:
-        logging.info("installing vanilla salt minion")
+        logger.info("installing vanilla salt minion")
         install_states_commands.append("sh bootstrap-salt.sh -F -i %s -A %s" % (host_alias, ip))
+
+    install_states_commands += [shell_escape(jinja2.Template(command).render(**settings)) for command in
+                                settings.get("salt_minion_postcommands", [])]
 
     for sub_command in install_states_commands:
         for res in exec_node_command(hostname, sub_command, private_key):
-            logging.info(res)
+            logger.info(res)
 
 
 def install_salt_master(hostname, private_key, host_alias, ip, settings):
     # if precommand provided, add them to the stack
     install_states_commands = [shell_escape(jinja2.Template(command).render(**settings)) for command in
-                               settings.get("salt_pre_bootstrap_commands", [])]
+                               settings.get("salt_master_precommands", [])]
 
     # if receipes provided,
     if "salt_state_dest_folder" in settings and "salt_states_repo_url" in settings and "salt_states_repo_branch" in settings:
-        logging.info("cloning salt receipes to master")
+        logger.info("cloning salt receipes to master")
         install_states_commands += jinja2.Template(install_states_command_template).render(**settings).split("&&")
 
     install_states_commands.append('curl -o bootstrap-salt.sh -L https://bootstrap.saltstack.com')
     # if template provided, use it
     if "salt_master_template" in settings and "salt_minion_template" in settings:
-        logging.info("installing salt master with templates")
+        logger.info("installing salt master with templates")
         with open(settings["salt_master_template"]) as f:
             master_yaml_template = jinja2.Template(f.read()).render({**settings, **{"host_alias": host_alias}})
             master_json_template = json.dumps(yaml.load(master_yaml_template))
@@ -78,12 +86,12 @@ def install_salt_master(hostname, private_key, host_alias, ip, settings):
                 minion_json_template.replace("\"", "\\\""))))
 
     else:
-        logging.info("installing vanilla salt master")
+        logger.info("installing vanilla salt master")
         install_states_commands.append("sh bootstrap-salt.sh -F -M -i %s -A %s" % (host_alias, ip))
 
     for sub_command in install_states_commands:
         for res in exec_node_command(hostname, sub_command, private_key):
-            logging.info(res)
+            logger.info(res)
 
 
 # https://stackoverflow.com/questions/3163236/escape-arguments-for-paramiko-sshclient-exec-command/13786877#13786877
@@ -93,11 +101,11 @@ def shell_escape(arg):
 
 def post_install_commands(hostname, private_key, settings):
     install_states_commands = [jinja2.Template(command).render(**settings) for command in
-                               settings.get("salt_post_bootstrap_commands", [])]
+                               settings.get("salt_master_postcommands", [])]
     for sub_command in install_states_commands:
         for res in exec_node_command(hostname,
                                      shell_escape(jinja2.Template(sub_command).render(**settings)), private_key):
-            logging.info(res)
+            logger.info(res)
 
 
 def exec_node_command(host_name, command, private_key):
@@ -109,7 +117,7 @@ def exec_node_command(host_name, command, private_key):
         stdin, stdout, stderr = client.exec_command("ssh root@%s %s" % (host_name, command))
         res = stdout.read()
         for errline in str(stderr.read()).split("\\n"):
-            logging.warning(" %s > " % host_name + str(errline))
+            logger.warning(" %s > " % host_name + str(errline))
         stdin.close()
         stdout.close()
         stderr.close()

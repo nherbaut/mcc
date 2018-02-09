@@ -326,9 +326,20 @@ class Parsing():
 
         for index, host in enumerate(
                 [host for uid in self.opts.uid for host in self.job_host_list(uid, self.opts.site)]):
-            print(
-                "alias ssh%d=\"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
-                    index, settings["ssh_key_file_private"], host.replace("grid5000.fr", "g5k")))
+            if index == 0:
+                master_ip = get_ip(host, settings["ssh_key_file_private"], settings["salt_host_control_iface"])
+
+                print(
+                    "alias ssh%d=\"ssh -L 5011:%s:5011 -L 8888:%s:8888 -L 8086:%s:0886 -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
+                        index, master_ip, master_ip, master_ip, settings["ssh_key_file_private"],
+                        host.replace("grid5000.fr", "g5k")))
+
+
+
+            else:
+                print(
+                    "alias ssh%d=\"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
+                        index, settings["ssh_key_file_private"], host.replace("grid5000.fr", "g5k")))
 
     def job_list_print(self):
         res = self.job_list()
