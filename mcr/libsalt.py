@@ -112,8 +112,7 @@ def exec_node_command(host_name, login, command, private_key):
     if command is not None and command != "None" and len(command) > 0:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        key = paramiko.RSAKey.from_private_key_file(private_key)
-        client.connect("access.grid5000.fr", pkey=key, username=login)
+        client.connect("access.grid5000.fr", key_filename=private_key, username=login)
 
         stdin, stdout, stderr = client.exec_command("ssh root@%s %s" % (host_name, command))
         res = stdout.read()
