@@ -25,7 +25,7 @@ def get_ip(hostname, login, private_key, iface):
         return all_ips[0]
     else:
         raise Exception("failed to retreive master ip on interface %s. Available interfaces are: \n %s" % (
-            iface, str(exec_node_command(hostname, login, "ip l", private_key))))
+            iface, "\n".join(exec_node_command(hostname, login, "ip a", private_key))))
 
 
 def install_salt_minion(hostname, private_key, host_alias, ip, settings):
@@ -90,7 +90,7 @@ def install_salt_master(hostname, private_key, host_alias, ip, settings):
         install_states_commands.append("sh bootstrap-salt.sh -F -M -i %s -A %s" % (host_alias, ip))
 
     for sub_command in install_states_commands:
-        for res in exec_node_command(hostname, settings["login"],sub_command, private_key):
+        for res in exec_node_command(hostname, settings["login"], sub_command, private_key):
             logger.info(res)
 
 

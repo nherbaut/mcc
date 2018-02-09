@@ -7,7 +7,6 @@ cryptography>=2.1.4
 idna>=2.6
 Jinja2>=2.10
 MarkupSafe>=1.0
-MultiCoudRunner>=0.0.3
 paramiko>=2.4.0
 py-dateutil>=2.2
 pyasn1>=0.4.2
