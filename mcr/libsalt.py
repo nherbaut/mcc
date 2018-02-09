@@ -17,15 +17,15 @@ logging.getLogger("paramiko").setLevel(logging.WARNING)
 install_states_command_template = "rm -rf {{ salt_state_dest_folder }}  && git  clone {{ salt_states_repo_url }}  --branch {{ salt_states_repo_branch }} --single-branch /{{ salt_state_dest_folder }}"
 
 
-def get_ip(hostname, private_key, iface):
+def get_ip(hostname, login, private_key, iface):
     command = 'ip a s %s ' % iface
-    ip_res = str(exec_node_command(hostname, command, private_key))
+    ip_res = str(exec_node_command(hostname, login, command, private_key))
     all_ips = re.findall(" +inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})", ip_res)
     if len(all_ips) > 0:
         return all_ips[0]
     else:
         raise Exception("failed to retreive master ip on interface %s. Available interfaces are: \n %s" % (
-            iface, str(exec_node_command(hostname, "ip l", private_key))))
+            iface, str(exec_node_command(hostname, login, "ip l", private_key))))
 
 
 def install_salt_minion(hostname, private_key, host_alias, ip, settings):
@@ -54,7 +54,7 @@ def install_salt_minion(hostname, private_key, host_alias, ip, settings):
                                 settings.get("salt_minion_postcommands", [])]
 
     for sub_command in install_states_commands:
-        for res in exec_node_command(hostname, sub_command, private_key):
+        for res in exec_node_command(hostname, settings["login"], sub_command, private_key):
             logger.info(res)
 
 
@@ -90,7 +90,7 @@ def install_salt_master(hostname, private_key, host_alias, ip, settings):
         install_states_commands.append("sh bootstrap-salt.sh -F -M -i %s -A %s" % (host_alias, ip))
 
     for sub_command in install_states_commands:
-        for res in exec_node_command(hostname, sub_command, private_key):
+        for res in exec_node_command(hostname, settings["login"],sub_command, private_key):
             logger.info(res)
 
 
@@ -103,16 +103,17 @@ def post_install_commands(hostname, private_key, settings):
     install_states_commands = [jinja2.Template(command).render(**settings) for command in
                                settings.get("salt_master_postcommands", [])]
     for sub_command in install_states_commands:
-        for res in exec_node_command(hostname,
+        for res in exec_node_command(hostname, settings["login"],
                                      shell_escape(jinja2.Template(sub_command).render(**settings)), private_key):
             logger.info(res)
 
 
-def exec_node_command(host_name, command, private_key):
+def exec_node_command(host_name, login, command, private_key):
     if command is not None and command != "None" and len(command) > 0:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect("access.grid5000.fr", key_filename=private_key)
+        key = paramiko.RSAKey.from_private_key_file(private_key)
+        client.connect("access.grid5000.fr", pkey=key, username=login)
 
         stdin, stdout, stderr = client.exec_command("ssh root@%s %s" % (host_name, command))
         res = stdout.read()
