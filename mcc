@@ -331,7 +331,7 @@ class Parsing():
 
                 print(
                     "alias ssh%d=\"ssh -L 5011:%s:5011 -L 8888:%s:8888 -L 8086:%s:0886 -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
-                        index, master_ip, master_ip, master_ip, settings["ssh_key_file_private"],
+                        index, master_ip, master_ip, master_ip, settings["g5k_ssh_key_file_private"],
                         host.replace("grid5000.fr", "g5k")))
 
 
@@ -339,7 +339,7 @@ class Parsing():
             else:
                 print(
                     "alias ssh%d=\"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
-                        index, settings["ssh_key_file_private"], host.replace("grid5000.fr", "g5k")))
+                        index, settings["g5k_ssh_key_file_private"], host.replace("grid5000.fr", "g5k")))
 
     def job_list_print(self):
         res = self.job_list()
