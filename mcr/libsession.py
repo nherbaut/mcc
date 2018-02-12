@@ -1,6 +1,7 @@
 import requests
 import logging
 from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 
 class DummyAdaptor(HTTPAdapter):
@@ -29,4 +30,15 @@ class SessionWithUrlBase(requests.Session):
 def create_session(settings_api_url, settings_login, settings_pwd):
     requests.Session = SessionWithUrlBase
     session = requests.Session(settings_api_url, settings_login, settings_pwd)
+    # https://www.peterbe.com/plog/best-practice-with-retries-with-requests
+    retry = Retry(
+        total=100,
+        read=100,
+        connect=100,
+        backoff_factor=0.3,
+        status_forcelist=(500, 502, 504),
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
     return session
