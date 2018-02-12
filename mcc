@@ -124,6 +124,13 @@ parser.add_argument("--config",
 parser.add_argument("-s", action=ParseSettings, help="override config file settings", nargs="*", default={},
                     dest="settings")
 
+wait_parser = subparsers.add_parser("wait")
+action_wait_parser = wait_parser.add_subparsers(dest="action")
+kill_wait_parser = action_wait_parser.add_parser("kill")
+kill_wait_parser.add_argument("uid", type=str, nargs='+', help='uid of the job to delete when killed')
+kill_wait_parser.add_argument("--site", type=str, nargs='?', help='hint of where the site job is',
+                               default=None)
+
 alias_parser = subparsers.add_parser("alias")
 
 action_alias_parser = alias_parser.add_subparsers(dest="action")
@@ -239,7 +246,7 @@ class Parsing():
 
     def run(self):
 
-        switch = {"job": self.handle_job, "dep": self.handle_dep, "alias": self.handle_alias}
+        switch = {"job": self.handle_job, "dep": self.handle_dep, "alias": self.handle_alias, "wait": self.handle_wait}
 
         if self.opts.command not in switch:
             parser.error('please specify an action: %s' % ", ".join(switch))
@@ -252,6 +259,32 @@ class Parsing():
             parser.error('please specify an action: %s' % ", ".join(switch))
 
         switch[self.opts.action]()
+
+    def handle_wait(self):
+
+
+
+        import signal
+        import time
+
+        class GracefulKiller:
+            kill_now = False
+
+            def __init__(self):
+                signal.signal(signal.SIGINT, self.exit_gracefully)
+                signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+            def exit_gracefully(self, signum, frame):
+                self.kill_now = True
+
+        killer = GracefulKiller()
+        while True:
+            time.sleep(1)
+            if killer.kill_now:
+                self.job_del()
+                break
+
+
 
     def handle_job(self):
 
@@ -283,7 +316,8 @@ class Parsing():
 
             for i, host in enumerate(self.job_host_list(self.opts.uid, self.opts.site)):
                 if i == 0:
-                    master_ip = get_ip(host, settings["login"],settings["ssh_key_file_private"], settings["salt_host_control_iface"])
+                    master_ip = get_ip(host, settings["login"], settings["ssh_key_file_private"],
+                                       settings["salt_host_control_iface"])
                     master_hostname = host
 
                     print("master ip: %s" % master_ip)
@@ -327,7 +361,8 @@ class Parsing():
         for index, host in enumerate(
                 [host for uid in self.opts.uid for host in self.job_host_list(uid, self.opts.site)]):
             if index == 0:
-                master_ip = get_ip(host, settings["login"], settings["ssh_key_file_private"], settings["salt_host_control_iface"])
+                master_ip = get_ip(host, settings["login"], settings["ssh_key_file_private"],
+                                   settings["salt_host_control_iface"])
 
                 print(
                     "alias ssh%d=\"ssh -L 5011:%s:5011 -L 8888:%s:8888 -L 8086:%s:0886 -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
