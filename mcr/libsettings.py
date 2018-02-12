@@ -31,12 +31,11 @@ def merge_settings(config_path, cli_settings={}):
     with open(config_path) as settings_file:
         settings = yaml.load(settings_file)
 
-
-        if settings is not None and "ssh_key_file_public" in  settings:
-            with open(settings["ssh_key_file_public"]) as f:
+        if settings is not None and "g5k_ssh_key_file_public" in settings:
+            with open(settings["g5k_ssh_key_file_public"]) as f:
                 settings_ssh_key = f.read()
         else:
-            raise Exception("Please specify a ssh_key_file_public in your settings")
+            raise Exception("Please specify a g5k_ssh_key_file_public in your settings")
 
         res = {**settings, **cli_settings}
         res["ssh_key"] = settings_ssh_key
