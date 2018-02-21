@@ -427,7 +427,7 @@ class Parsing():
                 print("Cannot del job %s since its state is %s " % (uid, job_state))
 
     def job_wait(self):
-        job_href = find_job(self.settings["uid"], [self.settings["site"]])
+        job_href = find_job(self.s, self.settings["uid"], [self.settings["site"]])
         k, v = self.settings["filter"].split("=")
         job = g5k(self.s)(job_href).get_raw()
         while job[k] != v:
@@ -455,25 +455,36 @@ class Parsing():
             raise Exception("Cannot show hosts, job is %s " % job["state"])
 
     def dep_add(self):
-        job = g5k(self.s)(
-            find_job(self.settings["uid"],
-                     None if self.settings["site"] is None else [self.settings["site"]])).get_raw()
-        if len(self.settings["nodes"]) == 0:
+        session = self.s
+        uid = self.settings["uid"]
+        site = self.settings["site"]
+        nodes = self.settings["nodes"]
+        environment = self.settings["environment"]
+        mailto = self.settings["mailto"]
+
+        job = g5k(session)(
+            find_job(session, uid,
+                     None if site is None else [site])).get_raw()
+        if len(nodes) == 0:
             node_list = job["assigned_nodes"]
         else:
-            node_list = list(set(job["assigned_nodes"]) & set(self.settings["nodes"]))
-        dep_uid = g5k(self.s)(get_link_href(job, "parent"))("deployments").post_provision(node_list=node_list,
-                                                                                          key=settings["ssh_key"],
-                                                                                          environment=self.settings[
-                                                                                              "environment"],
-                                                                                          notifications=["mailto:%s" %
-                                                                                                         self.settings[
-                                                                                                             "mailto"]])
+            node_list = list(set(job["assigned_nodes"]) & set(nodes))
+        dep_uid = g5k(session)(get_link_href(job, "parent"))("deployments").post_provision(node_list=node_list,
+                                                                                           key=settings["ssh_key"],
+                                                                                           environment=environment,
+                                                                                           notifications=["mailto:%s" %
+                                                                                                          mailto])
         print(dep_uid)
 
     def dep_list(self):
-        res = print_site_item("deployments", self.settings["uid"], self.settings["sites"], self.settings["filter"])
-        print_items(res, self.settings["format"])
+        uid = self.settings["uid"]
+        sites = self.settings["sites"]
+        filter_ = self.settings["filter"]
+        format_ = self.settings["format"]
+        login = self.settings["login"]
+        session = self.s
+        res = print_site_item(session, "deployments", uid, sites, filter_, login)
+        print_items(res, format_)
 
     def dep_wait(self):
         dep_href = find_dep(self.settings["uid"], [self.settings["site"]])
