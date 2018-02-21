@@ -22,13 +22,13 @@ import threading
 import dateutil
 
 
-def get_sites():
-    return g5k(self.s)("stable/sites").get_items()
+def get_sites(session):
+    return g5k(session)("stable/sites").get_items()
 
 
-def find_site_for_cluster(cluster):
-    for site in g5k(self.s)("stable/sites").get_items():
-        if cluster in g5k(self.s)("stable/sites")(site)("clusters").get_items():
+def find_site_for_cluster(session, cluster):
+    for site in g5k(session)("stable/sites").get_items():
+        if cluster in g5k(session)("stable/sites")(site)("clusters").get_items():
             return site
     raise ApiError(404, "Cluster not found")
 
@@ -73,7 +73,7 @@ def find_sub_item(session, item, uid, sites_hints):
     '''
 
     if sites_hints is None or len(sites_hints) == 0:
-        target_sites = g5k(self.s)("stable")("sites").get_items()
+        target_sites = g5k(session)("stable")("sites").get_items()
     else:
         target_sites = sites_hints
 
@@ -405,11 +405,11 @@ class Parsing():
         else:
             reservation = None  # now
 
-        if self.settings["site"] in get_sites():
+        if self.settings["site"] in get_sites(self.s):
             site = self.settings["site"]
         else:
             properties.append(("cluster", "'%s'" % self.settings["site"]))
-            site = find_site_for_cluster(self.settings["site"])
+            site = find_site_for_cluster(self.s, self.settings["site"])
 
         job_uid = g5k(self.s)("stable")("sites")(site).post_job(resources=resources, properties=properties,
                                                                 reservation=reservation,
