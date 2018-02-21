@@ -98,6 +98,8 @@ class Kolector:
         for item in args:
             for subitem in str(item).split("/"):
                 self.path_elements.append(subitem)
+        if "q" in kwargs:
+            self.path_elements[-1] = self.path_elements[-1] + "?" + "&".join(["%s=%s" % (k, v) for k, v in kwargs["q"].items()])
 
         return self
 
@@ -197,7 +199,7 @@ def g5k(s):
     return Kolector(session=s)
 
 
-class MCCClient():
+class MCCClient:
 
     def __init__(self, **settings):
         self.settings = settings
@@ -575,8 +577,9 @@ def print_site_item(session, items_name, uid, sites, filter, login, quiet):
     if uid is None:
         for site in g5k(session)("stable")("sites").get_items():
             if sites is None or site in sites:
-                return g5k(session)("stable")("sites")(site)(items_name).get_items_filtered(data=not quiet,
-                                                                                            **kwargs)
+                return g5k(session)("stable")("sites")(site)(items_name, q={"user_uid": login}).get_items_filtered(
+                    data=not quiet,
+                    **kwargs)
 
     else:
 

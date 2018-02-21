@@ -7,7 +7,7 @@ with open("requirements.txt") as requirements_file:
 
 setup(
     name='MultiCoudRunner',
-    version='0.0.3',
+    version='0.1.0',
     description='Run experimentation on multiple clouds',
     author='Nicolas Herbaut',
     author_email='nicolas.herbaut@univ-grenoble-alpes.fr',
