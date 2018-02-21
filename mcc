@@ -487,17 +487,22 @@ class Parsing():
         print_items(res, format_)
 
     def dep_wait(self):
-        dep_href = find_dep(self.settings["uid"], [self.settings["site"]])
-        k, v = self.settings["filter"].split("=")
-        dep = g5k(self.s)(dep_href).get_raw()
+        uid = self.settings["uid"]
+        site = self.settings["site"]
+        filter_ = self.settings["filter"]
+        session = self.s
+        quiet = self.settings["quiet"]
+        dep_href = find_dep(session, uid, [site])
+        k, v = filter_.split("=")
+        dep = g5k(session)(dep_href).get_raw()
         while dep[k] != v:
-            if not self.settings["quiet"]:
+            if not quiet:
                 minutes_elapsed = (int(time.time()) - int(dep["created_at"])) // 60
                 sys.stdout.write(
                     "\b" * 80 + "%s minutes elapsed (is %s)" % (minutes_elapsed, dep["status"]))
                 sys.stdout.flush()
             time.sleep(10)
-            dep = g5k(self.s)(dep_href).get_raw()
+            dep = g5k(session)(dep_href).get_raw()
 
 
 try:
