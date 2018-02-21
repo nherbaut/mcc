@@ -24,7 +24,6 @@ class ParseSettings(argparse.Action):
         namespace.settings[k] = v
 
 
-
 def valid_oar_date(adate):
     return dateutil.parser.parse(adate)
 
@@ -39,6 +38,16 @@ parser.add_argument("--config",
                     default=None)
 parser.add_argument("-s", action=ParseSettings, help="override config file self.settings", nargs="*", default={},
                     dest="settings")
+
+env_parser = subparsers.add_parser("env")
+action_env_parser = env_parser.add_subparsers(dest="action")
+list_action_env_parser = action_env_parser.add_parser("list")
+list_action_env_parser.add_argument("uid", type=str, nargs='?', help='uid of the site to inspect', default=None)
+
+site_parser = subparsers.add_parser("site")
+action_site_parser = site_parser.add_subparsers(dest="action")
+list_action_site_parser = action_site_parser.add_parser("list")
+list_action_site_parser.add_argument("uid", type=str, nargs='?', help='uid of the site to inspect', default=None)
 
 wait_parser = subparsers.add_parser("wait")
 action_wait_parser = wait_parser.add_subparsers(dest="action")

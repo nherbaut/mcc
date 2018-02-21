@@ -4,8 +4,7 @@ import time
 from jinja2 import Template
 
 
-def print_items(items, print_template):
-
+def print_items(items, print_template=None):
     if print_template is None:
         if len(items) == 0:
             return

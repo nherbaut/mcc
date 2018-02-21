@@ -14,6 +14,8 @@ from mcr.libsalt import get_ip, install_salt_master, install_salt_minion, post_i
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
+API_VER = "4.0"
+
 
 class ApiError(Exception):
     def __init__(self, return_code, return_text):
@@ -99,7 +101,8 @@ class Kolector:
             for subitem in str(item).split("/"):
                 self.path_elements.append(subitem)
         if "q" in kwargs:
-            self.path_elements[-1] = self.path_elements[-1] + "?" + "&".join(["%s=%s" % (k, v) for k, v in kwargs["q"].items()])
+            self.path_elements[-1] = self.path_elements[-1] + "?" + "&".join(
+                ["%s=%s" % (k, v) for k, v in kwargs["q"].items()])
 
         return self
 
@@ -207,7 +210,9 @@ class MCCClient:
 
     def run(self):
 
-        switch = {"job": self.handle_job, "dep": self.handle_dep, "alias": self.handle_alias, "wait": self.handle_wait}
+        switch = {"job": self.handle_job, "dep": self.handle_dep,
+                  "alias": self.handle_alias, "wait": self.handle_wait,
+                  "env": self.handle_env, "site": self.handle_site}
         command = self.settings["command"]
 
         if command not in switch:
@@ -215,6 +220,20 @@ class MCCClient:
         action = self.settings["action"]
 
         switch[command](action)
+
+    def handle_env(self, action):
+        switch = {"list": self.env_list_print}
+        if action not in switch:
+            raise Exception('please specify an action: %s' % ", ".join(switch))
+
+        switch[action]()
+
+    def handle_site(self, action):
+        switch = {"list": self.site_list_print}
+        if action not in switch:
+            raise Exception('please specify an action: %s' % ", ".join(switch))
+
+        switch[action]()
 
     def handle_alias(self, action):
         switch = {"list": self.alias_list_print}
@@ -341,6 +360,24 @@ class MCCClient:
         res = print_site_item(session, "jobs", uid, sites, filters, login, quiet)
         return res
 
+    def site_list_print(self):
+        session = self.s
+        uid = self.settings["uid"]
+
+        if uid is None:
+            for site in g5k(session)(API_VER)("sites").get_items():
+                print(site)
+        else:
+            print_items([g5k(session)(API_VER)("sites")(uid).get_raw()])
+
+    def env_list_print(self):
+        session = self.s
+
+        for site in get_sites(session):
+
+            for env in g5k(session)("sites")(site)("environments").get_raw():
+                print(env)
+
     def alias_list_print(self):
 
         for index, host in enumerate(
@@ -405,9 +442,9 @@ class MCCClient:
             properties.append(("cluster", "'%s'" % site))
             site = find_site_for_cluster(session, site)
 
-        job_uid = g5k(session)("stable")("sites")(site).post_job(resources=resources, properties=properties,
-                                                                 reservation=reservation,
-                                                                 queue=default_queue)
+        job_uid = g5k(session)(API_VER)("sites")(site).post_job(resources=resources, properties=properties,
+                                                                reservation=reservation,
+                                                                queue=default_queue)
         print(job_uid)
 
     def _job_del(self):
@@ -575,9 +612,9 @@ def print_site_item(session, items_name, uid, sites, filter, login, quiet):
     kwargs["user_uid"] = login
 
     if uid is None:
-        for site in g5k(session)("stable")("sites").get_items():
+        for site in g5k(session)(API_VER)("sites").get_items():
             if sites is None or site in sites:
-                return g5k(session)("stable")("sites")(site)(items_name, q={"user_uid": login}).get_items_filtered(
+                return g5k(session)(API_VER)("sites")(site)(items_name, q={"user_uid": login}).get_items_filtered(
                     data=not quiet,
                     **kwargs)
 
@@ -595,13 +632,13 @@ def find_sub_item(session, item, uid, sites_hints):
     '''
 
     if sites_hints is None or len(sites_hints) == 0:
-        target_sites = g5k(session)("stable")("sites").get_items()
+        target_sites = g5k(session)(API_VER)("sites").get_items()
     else:
         target_sites = sites_hints
 
     for site in target_sites:
         try:
-            items_for_site = g5k(session)("stable")("sites")(site)(item)(uid).get_raw()
+            items_for_site = g5k(session)(API_VER)("sites")(site)(item)(uid).get_raw()
             return get_link_href(items_for_site, rel="self")
         except ApiError as e:
             if e.return_code == 404:
