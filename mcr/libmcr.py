@@ -241,17 +241,17 @@ class MCCClient():
         while True:
             time.sleep(1)
             if killer.kill_now:
-                self.job_del()
+                self._job_del()
                 break
 
     def handle_job(self, action):
 
-        switch = {"list": self.job_list_print,
-                  "add": self.job_add,
-                  "del": self.job_del,
-                  "wait": self.job_wait,
-                  "hosts-list": self.job_host_list_print,
-                  "install": self.job_install
+        switch = {"list": self._job_list_print,
+                  "add": self._job_add,
+                  "del": self._job_del,
+                  "wait": self._job_wait,
+                  "hosts-list": self._job_host_list_print,
+                  "install": self._job_install
                   }
 
         if action not in switch:
@@ -259,28 +259,36 @@ class MCCClient():
         switch[action]()
 
     def handle_dep(self, action):
-        switch = {"add": self.dep_add,
-                  "list": self.dep_list,
-                  "wait": self.dep_wait}
+        switch = {"add": self._dep_add,
+                  "list": self._dep_list,
+                  "wait": self._dep_wait}
 
         if action not in switch:
             raise Exception('please specify an action: %s' % ", ".join(switch))
 
         switch[action]()
 
-    def job_install(self):
+    def _job_install(self):
         application = self.settings["application"]
         uid = self.settings["uid"]
         site = self.settings["site"]
         login = self.settings["login"]
+        salt_host_control_iface = self.settings["salt_host_control_iface"]
+        ssh_key_file_private = self.settings["ssh_key_file_private"]
+        session = self.s
+
+        return MCCClient.job_install(session, application, uid, site, login, salt_host_control_iface,
+                                     ssh_key_file_private,
+                                     self.settings)
+
+    @staticmethod
+    def job_install(session, application, uid, site, login, salt_host_control_iface, ssh_key_file_private, settings):
 
         if application == "salt":
             threads = []
-            ssh_key_file_private = self.settings["ssh_key_file_private"]
-            salt_host_control_iface = self.settings["salt_host_control_iface"]
-            ssh_key_file_private = self.settings["ssh_key_file_private"]
+            # ssh_key_file_private = self.settings["ssh_key_file_private"] # not used here
 
-            for i, host in enumerate(self.job_host_list(uid, site)):
+            for i, host in enumerate(MCCClient.job_host_list(session, uid, site)):
                 if i == 0:
                     master_ip = get_ip(host, login, ssh_key_file_private, salt_host_control_iface
                                        )
@@ -291,7 +299,7 @@ class MCCClient():
 
                     t = threading.Thread(target=install_salt_master,
                                          args=(
-                                             host, ssh_key_file_private, "h0", master_ip, self.settings))
+                                             host, ssh_key_file_private, "h0", master_ip, settings))
                     t.start()
                     threads.append(t)
                 else:
@@ -299,17 +307,17 @@ class MCCClient():
                     print("installing minion in %s" % host)
                     t = threading.Thread(target=install_salt_minion,
                                          args=(
-                                             host, ssh_key_file_private, "h%s" % i, master_ip, self.settings))
+                                             host, ssh_key_file_private, "h%s" % i, master_ip, settings))
                     t.start()
                     threads.append(t)
             for t in threads:
                 t.join()
 
-                post_install_commands(master_hostname, ssh_key_file_private, self.settings)
+                post_install_commands(master_hostname, ssh_key_file_private, settings)
 
             print("done")
 
-    def job_list(self):
+    def _job_list(self):
 
         filters = copy.copy(self.settings["filter"])
         filters.insert(0, "user_uid=%s" % self.settings["login"])
@@ -317,81 +325,123 @@ class MCCClient():
         sites = self.settings["sites"]
         login = self.settings["login"]
         quiet = self.settings["quiet"]
+        session = self.s
 
+        return MCCClient.job_list(uid, sites, login, quiet, session)
+
+    @staticmethod
+    def job_list(filters, uid, sites, login, quiet, session):
         if uid == "planned":  # a job is planed in the future and without error
             filters.insert(0, "started_at>=%d" % int(time.time()))
             filters.insert(0, "state!=error")
             uid = None
 
-        res = print_site_item(self.s, "jobs", uid, sites, filters, login, quiet)
+        res = print_site_item(session, "jobs", uid, sites, filters, login, quiet)
         return res
 
     def alias_list_print(self):
 
         for index, host in enumerate(
-                [host for uid in self.settings["uid"] for host in self.job_host_list(uid, self.settings["site"])]):
+                [host for uid in self.settings["uid"] for host in self._job_host_list(uid, self.settings["site"])]):
             if index == 0:
                 master_ip = get_ip(host, self.settings["login"], self.settings["ssh_key_file_private"],
                                    self.settings["salt_host_control_iface"])
-
                 print(
                     "alias ssh%d=\"ssh -L 5011:%s:5011 -L 8888:%s:8888 -L 8086:%s:0886 -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
                         index, master_ip, master_ip, master_ip, self.settings["g5k_ssh_key_file_private"],
                         host.replace("grid5000.fr", "g5k")))
-
-
-
             else:
                 print(
                     "alias ssh%d=\"ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
                         index, self.settings["g5k_ssh_key_file_private"], host.replace("grid5000.fr", "g5k")))
 
-    def job_list_print(self):
-        res = self.job_list()
-        print_items(res, self.settings["format"])
+    def _job_list_print(self):
+        format = self.settings["format"]
+        filters = copy.copy(self.settings["filter"])
+        filters.insert(0, "user_uid=%s" % self.settings["login"])
+        uid = self.settings["uid"]
+        sites = self.settings["sites"]
+        login = self.settings["login"]
+        quiet = self.settings["quiet"]
+        session = self.s
 
-    def job_add(self):
+        MCCClient.job_list_print(filters, uid, sites, login, quiet, session, format)
+
+    @staticmethod
+    def job_list_print(filters, uid, sites, login, quiet, session, format):
+        res = MCCClient.job_list(filters, uid, sites, login, quiet, session)
+        print_items(res, format)
+
+    def _job_add(self):
 
         default_queue = self.settings.get("default_queue", "default")
-        wt = get_wall_time(self.settings["duration_adv"], self.settings["duration"])
+        wallt_time = get_wall_time(self.settings["duration_adv"], self.settings["duration"])
         properties = []
         resources = []
-        # it sucks that we cannot have a dict, but we need to preserve key ordering for OAR
-        resources.append(("nodes", self.settings["node_count"]))
-        resources.append(("walltime", wt))
+        effect_date = self.settings["effect_date"]
+        user_date = self.settings.get("date", None)
+        site = self.settings["site"]
+        session = self.s
+        node_count = self.settings["node_count"]
 
-        if self.settings["effect_date"] == "on":
-            reservation = self.settings["date"].strftime("%Y-%m-%d %H:%M:%S")  # in the future
+        MCCClient.job_add(default_queue, wallt_time, properties, resources, effect_date, user_date, site, session,
+                          node_count)
+
+    @staticmethod
+    def job_add(default_queue, wallt_time, properties, resources, effect_date, user_date, site, session, node_count):
+
+        # it sucks that we cannot have a dict, but we need to preserve key ordering for OAR
+        resources.append(("nodes", node_count))
+        resources.append(("walltime", wallt_time))
+
+        if effect_date == "on":
+            reservation = user_date.strftime("%Y-%m-%d %H:%M:%S")  # in the future
         else:
             reservation = None  # now
 
-        if self.settings["site"] in get_sites(self.s):
-            site = self.settings["site"]
-        else:
-            properties.append(("cluster", "'%s'" % self.settings["site"]))
-            site = find_site_for_cluster(self.s, self.settings["site"])
+        if not site in get_sites(session):
+            properties.append(("cluster", "'%s'" % site))
+            site = find_site_for_cluster(session, site)
 
-        job_uid = g5k(self.s)("stable")("sites")(site).post_job(resources=resources, properties=properties,
-                                                                reservation=reservation,
-                                                                queue=default_queue)
+        job_uid = g5k(session)("stable")("sites")(site).post_job(resources=resources, properties=properties,
+                                                                 reservation=reservation,
+                                                                 queue=default_queue)
         print(job_uid)
 
-    def job_del(self):
-        for uid in self.settings["uid"]:
-            job_href = find_job(self.s, uid, None if self.settings["site"] is None else [self.settings["site"]])
-            job_state = g5k(self.s)(job_href).get_raw()["state"]
+    def _job_del(self):
+        uids = self.settings["uid"]
+        session = self.s
+        site = self.settings["site"]
+        MCCClient.job_del(uids, session, site)
+
+    @staticmethod
+    def job_del(uids, session, site):
+
+        for uid in uids:
+            job_href = find_job(session, uid, None if site is None else [site])
+            job_state = g5k(session)(job_href).get_raw()["state"]
             if job_state != "error":
-                g5k(self.s)(job_href).delete()
+                g5k(session)(job_href).delete()
                 print("Job %s has been deleted " % job_href)
             else:
                 print("Cannot del job %s since its state is %s " % (uid, job_state))
 
-    def job_wait(self):
-        job_href = find_job(self.s, self.settings["uid"], [self.settings["site"]])
-        k, v = self.settings["filter"].split("=")
-        job = g5k(self.s)(job_href).get_raw()
-        while job[k] != v:
-            if not self.settings["quiet"]:
+    def _job_wait(self):
+        session = self.s
+        uid = self.settings["uid"]
+        sites = [self.settings["site"]]
+        filter_ = self.settings["filter"]
+        quiet = self.settings["quiet"]
+        MCCClient.job_wait(session, uid, sites, filter_, quiet)
+
+    @staticmethod
+    def job_wait(session, uid, sites, filter_, quiet):
+
+        job_href = find_job(session, uid, sites)
+        filter_label, filter_value = filter_.split("=")
+        job = g5k(session)(job_href).get_raw()
+        while job[filter_label] != filter_value:
+            if not quiet:
                 if "scheduled_at" in job:
                     minutes_remaining = (int(job["scheduled_at"]) - int(time.time())) // 60
                 else:
@@ -400,28 +450,44 @@ class MCCClient():
                     "\b" * 80 + " %s minutes remaining (is %s)" % (minutes_remaining, job["state"]))
                 sys.stdout.flush()
                 time.sleep(5)
-                job = g5k(self.s)(job_href).get_raw()
+                job = g5k(session)(job_href).get_raw()
 
-    def job_host_list_print(self):
-        hosts = self.job_host_list(self.settings["uid"], self.settings["site"])
+    def _job_host_list_print(self):
+        uid, site = self.settings["uid"], self.settings["site"]
+        session = self.s
+        hosts = MCCClient.job_host_list(session, uid, site)
         print("\n".join(hosts))
 
-    def job_host_list(self, uid, site):
-        job_href = find_job(self.s, uid, [site])
-        job = g5k(self.s)(job_href).get_raw()
+    @staticmethod
+    def job_host_list_print(uid, site):
+        return MCCClient._job_host_list(uid, site)
+
+    def _job_host_list(self, uid, site):
+        session = self.s
+        return MCCClient.job_host_list(session, uid, site)
+
+    @staticmethod
+    def job_host_list(session, uid, site):
+        job_href = find_job(session, uid, [site])
+        job = g5k(session)(job_href).get_raw()
         if job["state"] == "running":
             return job["assigned_nodes"]
         else:
             raise Exception("Cannot show hosts, job is %s " % job["state"])
 
-    def dep_add(self):
+    def _dep_add(self):
         session = self.s
         uid = self.settings["uid"]
         site = self.settings["site"]
         nodes = self.settings["nodes"]
         environment = self.settings["environment"]
         mailto = self.settings["mailto"]
+        ssh_key = self.settings["ssh_key"]
 
+        return MCCClient.dep_add(session, uid, site, nodes, environment, mailto, ssh_key)
+
+    @staticmethod
+    def dep_add(session, uid, site, nodes, environment, mailto, ssh_key):
         job = g5k(session)(
             find_job(session, uid,
                      None if site is None else [site])).get_raw()
@@ -430,13 +496,13 @@ class MCCClient():
         else:
             node_list = list(set(job["assigned_nodes"]) & set(nodes))
         dep_uid = g5k(session)(get_link_href(job, "parent"))("deployments").post_provision(node_list=node_list,
-                                                                                           key=settings["ssh_key"],
+                                                                                           key=ssh_key,
                                                                                            environment=environment,
                                                                                            notifications=["mailto:%s" %
                                                                                                           mailto])
         print(dep_uid)
 
-    def dep_list(self):
+    def _dep_list(self):
         uid = self.settings["uid"]
         sites = self.settings["sites"]
         filter_ = self.settings["filter"]
@@ -444,15 +510,24 @@ class MCCClient():
         login = self.settings["login"]
         quiet = self.settings["quiet"]
         session = self.s
+
+        MCCClient.dep_list(uid, sites, filter_, format_, login, quiet, session)
+
+    @staticmethod
+    def dep_list(uid, sites, filter_, format_, login, quiet, session):
         res = print_site_item(session, "deployments", uid, sites, filter_, login, quiet)
         print_items(res, format_)
 
-    def dep_wait(self):
+    def _dep_wait(self):
         uid = self.settings["uid"]
         site = self.settings["site"]
         filter_ = self.settings["filter"]
         session = self.s
         quiet = self.settings["quiet"]
+        MCCClient.dep_wait(uid, site, filter_, session, quiet)
+
+    @staticmethod
+    def dep_wait(uid, site, filter_, session, quiet):
         dep_href = find_dep(session, uid, [site])
         k, v = filter_.split("=")
         dep = g5k(session)(dep_href).get_raw()
