@@ -209,7 +209,7 @@ class MCCClient():
         command = self.settings["command"]
 
         if command not in switch:
-            parser.error('please specify an action: %s' % ", ".join(switch))
+            raise Exception('please specify an action: %s' % ", ".join(switch))
         action = self.settings["action"]
 
         switch[command](action)
@@ -218,7 +218,7 @@ class MCCClient():
         switch = {"list": self.alias_list_print}
 
         if action not in switch:
-            parser.error('please specify an action: %s' % ", ".join(switch))
+            raise Exception('please specify an action: %s' % ", ".join(switch))
 
         switch[action]()
 
@@ -255,7 +255,7 @@ class MCCClient():
                   }
 
         if action not in switch:
-            parser.error('please specify an action: %s' % ", ".join(switch))
+            raise Exception('please specify an action: %s' % ", ".join(switch))
         switch[action]()
 
     def handle_dep(self, action):
@@ -264,7 +264,7 @@ class MCCClient():
                   "wait": self.dep_wait}
 
         if action not in switch:
-            parser.error('please specify an action: %s' % ", ".join(switch))
+            raise Exception('please specify an action: %s' % ", ".join(switch))
 
         switch[action]()
 
