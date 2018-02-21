@@ -447,7 +447,7 @@ class Parsing():
         print("\n".join(hosts))
 
     def job_host_list(self, uid, site):
-        job_href = find_job(uid, [site])
+        job_href = find_job(self.s, uid, [site])
         job = g5k(self.s)(job_href).get_raw()
         if job["state"] == "running":
             return job["assigned_nodes"]
