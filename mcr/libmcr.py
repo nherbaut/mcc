@@ -14,7 +14,7 @@ from mcr.libsalt import get_ip, install_salt_master, install_salt_minion, post_i
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-API_VER = "4.0"
+API_VER = "stable"
 
 
 class ApiError(Exception):
@@ -143,7 +143,7 @@ class Kolector:
         r = self.session.get("/".join(self.path_elements))
         if r.status_code < 299:
             logging.debug(r.json())
-            return [item["rel"] for item in g5kparser(self.session, r.json(), "links")]
+            return {item["rel"]: item["href"] for item in g5kparser(self.session, r.json(), "links")}
         raise ApiError(r.status_code, r.text)
 
     def url(self):
@@ -360,15 +360,24 @@ class MCCClient:
         res = print_site_item(session, "jobs", uid, sites, filters, login, quiet)
         return res
 
-    def site_list_print(self):
+    def site_list(self, uid=None):
         session = self.s
-        uid = self.settings["uid"]
+
+        res = []
 
         if uid is None:
             for site in g5k(session)(API_VER)("sites").get_items():
-                print(site)
+                res.append(site)
         else:
-            print_items([g5k(session)(API_VER)("sites")(uid).get_raw()])
+            res = [g5k(session)(API_VER)("sites")(uid).get_raw()]
+
+        return res
+
+    def cluster_list(self, uid):
+        pass
+
+    def site_list_print(self):
+        print_items(self.site_list())
 
     def env_list_print(self):
         session = self.s
@@ -607,6 +616,7 @@ def find_dep(session, dep, sites_hints=None):
     return find_sub_item(session, "deployments", dep, sites_hints)
 
 
+
 def print_site_item(session, items_name, uid, sites, filter, login, quiet):
     kwargs = {splat[0]: splat[1] for splat in (item.split("=") for item in filter)}
     kwargs["user_uid"] = login
@@ -614,7 +624,7 @@ def print_site_item(session, items_name, uid, sites, filter, login, quiet):
     if uid is None:
         for site in g5k(session)(API_VER)("sites").get_items():
             if sites is None or site in sites:
-                return g5k(session)(API_VER)("sites")(site)(items_name, q={"user_uid": login}).get_items_filtered(
+                return g5k(session)(API_VER)("sites")(site)(items_name).get_items_filtered(
                     data=not quiet,
                     **kwargs)
 

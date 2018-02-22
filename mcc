@@ -146,7 +146,7 @@ list_dep_parser.add_argument("--site", type=str, nargs='?', help='hint of where 
 # Parse
 opts = parser.parse_args()
 
-settings = merge_settings(opts.config, opts.settings)
+settings = load_settings(opts.config, opts.settings)
 
 # default values
 

@@ -16,7 +16,7 @@ def get_in_priodict(key, prioritary, secondary, required=True, default=None):
         return default
 
 
-def merge_settings(config_path, cli_settings={}):
+def load_settings(config_path=None, cli_settings={}):
     if config_path is None:
         local_settings_path = os.path.join(os.getcwd(), "settings.yaml")
         user_settings_path = os.path.join(str(Path.home()), "mcc", "settings.yaml")
