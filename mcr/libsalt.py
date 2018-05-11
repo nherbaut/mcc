@@ -1,5 +1,6 @@
 import os
 import sys
+import pathlib
 import paramiko
 import time
 import logging
@@ -18,21 +19,30 @@ install_states_command_template = "rm -rf {{ salt_state_dest_folder }}  && git  
 
 
 def get_ip(hostname, login, private_key, iface):
-    command = 'ip a s %s ' % iface
-    ip_res = str(exec_node_command(hostname, login, command, private_key))
-    all_ips = re.findall(" +inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})", ip_res)
-    if len(all_ips) > 0:
-        return all_ips[0]
+    command = 'ip -o -4 a s'
+    ip_res = exec_node_command(hostname, login, command, private_key, log_output=False)
+    all_ips = {}
+    for ip_data in ip_res:
+        for k, v in re.findall(".*[0-9]+: ([^ ]*) +inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/.*$",
+                               str(ip_data)):
+            all_ips.update({k: v})
+    if "lo" in all_ips:
+        del all_ips["lo"]
+    if iface in all_ips:
+        return all_ips[iface]
     else:
-        raise Exception("failed to retreive master ip on interface %s. Available interfaces are: \n %s" % (
-            iface, "\n".join(exec_node_command(hostname, login, "ip a", private_key))))
+        if len(all_ips) > 0:
+            return all_ips.items()[0]
+
+    raise Exception("failed to retreive master ip on interface %s. Available interfaces are: \n %s" % (
+        iface, "\n".join(exec_node_command(hostname, login, "ip a", private_key))))
 
 
 def install_salt_minion(hostname, private_key, host_alias, ip, settings):
     install_states_commands = [shell_escape(jinja2.Template(command).render(**settings)) for command in
                                settings.get("salt_minion_precommands", [])]
 
-    install_states_commands.append('curl -o bootstrap-salt.sh -L https://bootstrap.saltstack.com')
+    install_states_commands.append('curl -o -s bootstrap-salt.sh -L https://bootstrap.saltstack.com')
 
     if settings and "salt_minion_template" in settings:
         logger.info("installing salt minion with templates")
@@ -63,10 +73,22 @@ def install_salt_master(hostname, private_key, host_alias, ip, settings):
     install_states_commands = [shell_escape(jinja2.Template(command).render(**settings)) for command in
                                settings.get("salt_master_precommands", [])]
 
-    # if receipes provided,
     if "salt_state_dest_folder" in settings and "salt_states_repo_url" in settings and "salt_states_repo_branch" in settings:
         logger.info("cloning salt receipes to master")
         install_states_commands += jinja2.Template(install_states_command_template).render(**settings).split("&&")
+
+    if "salt_master_file_managed" in settings:
+        for file in settings["salt_master_file_managed"]:
+            src = pathlib.Path(file["src"])
+            dst = pathlib.Path(file["dst"])
+            with src.open("r") as f:
+                install_states_commands += [shell_escape("mkdir -p %s" % dst.parent)]
+                install_states_commands += [shell_escape('echo "" > %s ' % dst)]
+                processed_src_lines = jinja2.Template(f.read()).render(**settings).split("\n")
+                for line in processed_src_lines:
+                    install_states_commands += [shell_escape('echo "%s" >> %s' % (line, dst))]
+
+                    # if receipes provided,
 
     install_states_commands.append('curl -o bootstrap-salt.sh -L https://bootstrap.saltstack.com')
     # if template provided, use it
@@ -108,7 +130,7 @@ def post_install_commands(hostname, private_key, settings):
             logger.info(res)
 
 
-def exec_node_command(host_name, login, command, private_key):
+def exec_node_command(host_name, login, command, private_key, log_output=True):
     if command is not None and command != "None" and len(command) > 0:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -121,6 +143,11 @@ def exec_node_command(host_name, login, command, private_key):
         stdin.close()
         stdout.close()
         stderr.close()
-        return [" %s > " % host_name + str(r) for r in str(res).split("\\n")]
+        if log_output:
+            return [" %s < " % host_name + str(command)] + [" %s > " % host_name + str(r) for r in str(res).split("\\n")
+                                                            if
+                                                            len(r) > 3]
+        else:
+            return [str(r) for r in str(res).split("\\n") if len(r) > 3]
     else:
         return []
