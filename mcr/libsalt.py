@@ -15,7 +15,8 @@ ch = logging.StreamHandler()
 logger.addHandler(ch)
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
-install_states_command_template = "rm -rf {{ salt_state_dest_folder }}  && git  clone {{ salt_states_repo_url }}  --branch {{ salt_states_repo_branch }} --single-branch /{{ salt_state_dest_folder }}"
+install_states_command_template_master = "&& rm -rf {{ salt_state_dest_folder }}  && git  clone {{ salt_states_repo_url }}  --branch {{ salt_states_repo_branch }} --single-branch /{{ salt_state_dest_folder }}"
+install_states_command_template_minion = "rm -rf /tmp/*"
 
 
 def get_ip(hostname, login, private_key, iface):
@@ -32,23 +33,30 @@ def get_ip(hostname, login, private_key, iface):
         return all_ips[iface]
     else:
         if len(all_ips) > 0:
-            return all_ips.items()[0]
+            return list(all_ips.items())[0][1]
 
     raise Exception("failed to retreive master ip on interface %s. Available interfaces are: \n %s" % (
         iface, "\n".join(exec_node_command(hostname, login, "ip a", private_key))))
 
 
-def install_salt_minion(hostname, private_key, host_alias, ip, settings):
+def install_salt_minion(hostname, interface_name, private_key, host_alias, ip, settings):
     install_states_commands = [shell_escape(jinja2.Template(command).render(**settings)) for command in
                                settings.get("salt_minion_precommands", [])]
 
-    install_states_commands.append('curl -o -s bootstrap-salt.sh -L https://bootstrap.saltstack.com')
+    if "grisou-11" in hostname:
+        print("salut")
+
+    install_states_commands += jinja2.Template(install_states_command_template_minion).render(**settings).split("&&")
+
+    install_states_commands.append('curl -o bootstrap-salt.sh -L https://bootstrap.saltstack.com')
 
     if settings and "salt_minion_template" in settings:
         logger.info("installing salt minion with templates")
 
         with open(settings["salt_minion_template"]) as f:
-            minion_yaml_template = jinja2.Template(f.read()).render({**settings, **{"host_alias": host_alias}})
+
+            minion_yaml_template = jinja2.Template(f.read()).render(
+                {**settings, **{"host_alias": host_alias, "interface_name": interface_name}})
             minion_json_template = json.dumps(yaml.load(minion_yaml_template))
 
         install_states_commands.append(install_states_commands.append(
@@ -58,7 +66,7 @@ def install_salt_minion(hostname, private_key, host_alias, ip, settings):
 
     else:
         logger.info("installing vanilla salt minion")
-        install_states_commands.append("sh bootstrap-salt.sh -F -i %s -A %s" % (host_alias, ip))
+        install_states_commands.append(shell_escape("sh bootstrap-salt.sh -F -i %s -A %s" % (host_alias, ip)))
 
     install_states_commands += [shell_escape(jinja2.Template(command).render(**settings)) for command in
                                 settings.get("salt_minion_postcommands", [])]
@@ -68,14 +76,15 @@ def install_salt_minion(hostname, private_key, host_alias, ip, settings):
             logger.info(res)
 
 
-def install_salt_master(hostname, private_key, host_alias, ip, settings):
+def install_salt_master(hostname, interface_name, private_key, host_alias, ip, settings):
     # if precommand provided, add them to the stack
     install_states_commands = [shell_escape(jinja2.Template(command).render(**settings)) for command in
                                settings.get("salt_master_precommands", [])]
 
     if "salt_state_dest_folder" in settings and "salt_states_repo_url" in settings and "salt_states_repo_branch" in settings:
         logger.info("cloning salt receipes to master")
-        install_states_commands += jinja2.Template(install_states_command_template).render(**settings).split("&&")
+        install_states_commands += jinja2.Template(install_states_command_template_master).render(**settings).split(
+            "&&")
 
     if "salt_master_file_managed" in settings:
         for file in settings["salt_master_file_managed"]:
@@ -99,7 +108,8 @@ def install_salt_master(hostname, private_key, host_alias, ip, settings):
             master_json_template = json.dumps(yaml.load(master_yaml_template))
 
         with open(settings["salt_minion_template"]) as f:
-            minion_yaml_template = jinja2.Template(f.read()).render({**settings, **{"host_alias": host_alias}})
+            minion_yaml_template = jinja2.Template(f.read()).render(
+                {**settings, **{"host_alias": host_alias, "interface_name": interface_name}})
             minion_json_template = json.dumps(yaml.load(minion_yaml_template))
 
         install_states_commands.append(install_states_commands.append(
@@ -118,7 +128,8 @@ def install_salt_master(hostname, private_key, host_alias, ip, settings):
 
 # https://stackoverflow.com/questions/3163236/escape-arguments-for-paramiko-sshclient-exec-command/13786877#13786877
 def shell_escape(arg):
-    return "'%s'" % (arg.replace(r"'", r"'\''"),)
+    if arg is not None:
+        return "'%s'" % (arg.replace(r"'", r"'\''"),)
 
 
 def post_install_commands(hostname, private_key, settings):

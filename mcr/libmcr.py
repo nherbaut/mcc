@@ -310,6 +310,13 @@ class MCCClient:
             # ssh_key_file_private = self.settings["ssh_key_file_private"] # not used here
 
             for i, host in enumerate(MCCClient.job_host_list(session, uid, site)):
+
+                try:
+                    cluster_name = host.split("-")[0]
+                    interface_name = settings["g5k_interface_name_mapping"].get(cluster_name, "")
+                except:
+                    raise Exception("failed to computer interfacename")
+
                 if i == 0:
                     master_ip = get_ip(host, login, ssh_key_file_private, salt_host_control_iface
                                        )
@@ -318,9 +325,11 @@ class MCCClient:
                     print("master ip: %s" % master_ip)
                     print("installing master in %s" % host)
 
+                    # gk5 hack to get the cluster name, so we can infer the name of the interface
+
                     t = threading.Thread(target=install_salt_master,
                                          args=(
-                                             host, ssh_key_file_private, "h0", master_ip, settings))
+                                             host, interface_name, ssh_key_file_private, "h0", master_ip, settings))
                     t.start()
                     threads.append(t)
                 else:
@@ -328,7 +337,8 @@ class MCCClient:
                     print("installing minion in %s" % host)
                     t = threading.Thread(target=install_salt_minion,
                                          args=(
-                                             host, ssh_key_file_private, "h%s" % i, master_ip, settings))
+                                             host, interface_name, ssh_key_file_private, "h%s" % i, master_ip,
+                                             settings))
                     t.start()
                     threads.append(t)
             for t in threads:
@@ -614,7 +624,6 @@ def find_job(session, job, sites_hints=None):
 
 def find_dep(session, dep, sites_hints=None):
     return find_sub_item(session, "deployments", dep, sites_hints)
-
 
 
 def print_site_item(session, items_name, uid, sites, filter, login, quiet):
