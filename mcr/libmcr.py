@@ -405,7 +405,7 @@ class MCCClient:
                 master_ip = get_ip(host, self.settings["login"], self.settings["ssh_key_file_private"],
                                    self.settings["salt_host_control_iface"])
                 print(
-                    "alias ssh%d=\"ssh -L 5011:%s:5011 -L 8888:%s:8888 -L 8086:%s:0886 -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
+                    "alias ssh%d=\"ssh -L 0.0.0.0:5011:%s:5011 -L 8888:%s:8888 -L 8086:%s:0886 -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i %s root@%s\"" % (
                         index, master_ip, master_ip, master_ip, self.settings["g5k_ssh_key_file_private"],
                         host.replace("grid5000.fr", "g5k")))
             else:
