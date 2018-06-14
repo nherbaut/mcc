@@ -318,8 +318,7 @@ class MCCClient:
                     raise Exception("failed to computer interfacename")
 
                 if i == 0:
-                    master_ip = get_ip(host, login, ssh_key_file_private, salt_host_control_iface
-                                       )
+                    master_ip = get_ip(host, login, ssh_key_file_private, interface_name  )
                     master_hostname = host
 
                     print("master ip: %s" % master_ip)
@@ -402,6 +401,8 @@ class MCCClient:
         for index, host in enumerate(
                 [host for uid in self.settings["uid"] for host in self._job_host_list(uid, self.settings["site"])]):
             if index == 0:
+                cluster_name = host.split("-")[0]
+                interface_name = self.settings["g5k_interface_name_mapping"].get(cluster_name, "")
                 master_ip = get_ip(host, self.settings["login"], self.settings["ssh_key_file_private"],
                                    self.settings["salt_host_control_iface"])
                 print(
