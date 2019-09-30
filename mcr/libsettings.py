@@ -2,7 +2,6 @@ import yaml
 import os
 from pathlib import Path
 
-
 def get_in_priodict(key, prioritary, secondary, required=True, default=None):
     if key in prioritary:
         return prioritary[key]
@@ -29,7 +28,7 @@ def load_settings(config_path=None, cli_settings={}):
             exit(2)
 
     with open(config_path) as settings_file:
-        settings = yaml.load(settings_file)
+        settings = yaml.load(settings_file,Loader=yaml.loader.BaseLoader)
 
         if settings is not None and "g5k_ssh_key_file_public" in settings:
             with open(settings["g5k_ssh_key_file_public"]) as f:
