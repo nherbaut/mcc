@@ -15,6 +15,7 @@ salt_master_template: /home/nherbaut/workspace/simple-g5k-wrapper/salt-templates
 salt_states_repo_url: https://gricad-gitlab.univ-grenoble-alpes.fr/vqgroup/salt-master.git
 salt_states_repo_branch: auto_install
 salt_state_dest_folder: /srv
+salt_states_repo_subfolder: .
 salt_pre_bootstrap_commands:
   - apt-get update
   - apt-get install git --yes

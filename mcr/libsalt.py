@@ -15,7 +15,7 @@ ch = logging.StreamHandler()
 logger.addHandler(ch)
 
 logging.getLogger("paramiko").setLevel(logging.WARNING)
-install_states_command_template_master = "&& rm -rf {{ salt_state_dest_folder }}  && git  clone {{ salt_states_repo_url }}  --branch {{ salt_states_repo_branch }} --single-branch /{{ salt_state_dest_folder }}"
+install_states_command_template_master = "&& rm -rf {{ salt_state_dest_folder }}  && rm -rf /tmp/salt_states_repo && git  clone {{ salt_states_repo_url }}  --branch {{ salt_states_repo_branch }} --single-branch /tmp/salt_states_repo && cp -R /tmp/salt_states_repo/{{ salt_states_repo_subfolder }} {{ salt_state_dest_folder }}"
 install_states_command_template_minion = "rm -rf /tmp/*"
 
 

@@ -7,10 +7,10 @@ with open("requirements.txt") as requirements_file:
 
 setup(
     name='MultiCoudRunner',
-    version='0.1.0',
+    version='0.1.1',
     description='Run experimentation on multiple clouds',
     author='Nicolas Herbaut',
-    author_email='nicolas.herbaut@univ-grenoble-alpes.fr',
+    author_email='nicolas.herbaut@univ-paris1.fr',
     url='https://nextnet.top',
      scripts=['mcc'],
     install_requires=install_requires,
